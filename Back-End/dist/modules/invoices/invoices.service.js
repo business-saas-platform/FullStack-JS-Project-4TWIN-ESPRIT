@@ -19,30 +19,60 @@ const typeorm_2 = require("typeorm");
 const invoice_entity_1 = require("./entities/invoice.entity");
 const invoice_item_entity_1 = require("./entities/invoice-item.entity");
 let InvoicesService = class InvoicesService {
-    constructor(repo, items) {
+    constructor(repo, itemsRepo) {
         this.repo = repo;
-        this.items = items;
+        this.itemsRepo = itemsRepo;
+    }
+    calcTotals(items) {
+        const subtotal = items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
+        const taxAmount = items.reduce((sum, it) => sum + it.quantity * it.unitPrice * ((it.taxRate ?? 0) / 100), 0);
+        const totalAmount = subtotal + taxAmount;
+        return { subtotal, taxAmount, totalAmount };
     }
     async create(businessId, dto) {
-        const invoiceEntity = this.repo.create({ ...dto, businessId });
-        const saved = await this.repo.save(invoiceEntity);
-        const list = dto.items ?? [];
-        if (Array.isArray(list) && list.length) {
-            const itemEntities = list.map((it) => this.items.create({
-                invoice: saved,
-                description: it.description,
-                quantity: it.quantity,
-                unitPrice: it.unitPrice,
-                taxRate: it.taxRate ?? 0,
-                amount: it.amount ?? (it.quantity * it.unitPrice),
-            }));
-            await this.items.save(itemEntities);
-        }
-        const withItems = await this.repo.findOne({ where: { id: saved.id, businessId } });
-        return this.toApi(withItems ?? saved);
+        const list = Array.isArray(dto.items) ? dto.items : [];
+        if (!list.length)
+            throw new common_1.BadRequestException("Invoice items are required");
+        const { subtotal, taxAmount, totalAmount } = this.calcTotals(list.map((it) => ({
+            quantity: Number(it.quantity),
+            unitPrice: Number(it.unitPrice),
+            taxRate: Number(it.taxRate ?? 0),
+        })));
+        const invoice = this.repo.create({
+            businessId,
+            invoiceNumber: dto.invoiceNumber,
+            clientId: dto.clientId,
+            clientName: dto.clientName,
+            issueDate: dto.issueDate,
+            dueDate: dto.dueDate,
+            status: (dto.status ?? "draft"),
+            currency: dto.currency ?? "TND",
+            notes: dto.notes ?? null,
+            paidAmount: dto.paidAmount ?? 0,
+            subtotal,
+            taxAmount,
+            totalAmount,
+        });
+        const saved = await this.repo.save(invoice);
+        const itemEntities = this.itemsRepo.create(list.map((it) => ({
+            invoice: saved,
+            description: String(it.description ?? "").trim(),
+            quantity: Number(it.quantity),
+            unitPrice: Number(it.unitPrice),
+            taxRate: Number(it.taxRate ?? 0),
+            amount: Number(it.quantity) * Number(it.unitPrice),
+        })));
+        await this.itemsRepo.save(itemEntities);
+        const full = await this.repo.findOne({
+            where: { id: saved.id, businessId },
+        });
+        return this.toApi(full ?? saved);
     }
     async findAll(businessId) {
-        const list = await this.repo.find({ where: { businessId }, order: { issueDate: "DESC" } });
+        const list = await this.repo.find({
+            where: { businessId },
+            order: { issueDate: "DESC" },
+        });
         return list.map((inv) => this.toApi(inv));
     }
     async findOne(businessId, id) {
@@ -57,8 +87,10 @@ let InvoicesService = class InvoicesService {
             throw new common_1.NotFoundException("Invoice not found");
         Object.assign(inv, dto);
         const saved = await this.repo.save(inv);
-        const updated = await this.repo.findOne({ where: { id: saved.id, businessId } });
-        return this.toApi(updated ?? saved);
+        const full = await this.repo.findOne({
+            where: { id: saved.id, businessId },
+        });
+        return this.toApi(full ?? saved);
     }
     async remove(businessId, id) {
         const res = await this.repo.delete({ id, businessId });

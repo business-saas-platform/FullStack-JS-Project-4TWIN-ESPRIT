@@ -19,19 +19,33 @@ __decorate([
     __metadata("design:type", String)
 ], InviteTeamMemberDto.prototype, "businessId", void 0);
 __decorate([
+    (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], InviteTeamMemberDto.prototype, "name", void 0);
 __decorate([
+    (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsEmail)(),
     __metadata("design:type", String)
 ], InviteTeamMemberDto.prototype, "email", void 0);
 __decorate([
-    (0, class_validator_1.IsEnum)(["business_owner", "business_admin", "accountant", "team_member"]),
+    (0, class_validator_1.IsIn)(["business_admin", "accountant", "team_member"]),
     __metadata("design:type", String)
 ], InviteTeamMemberDto.prototype, "role", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], InviteTeamMemberDto.prototype, "status", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], InviteTeamMemberDto.prototype, "joinedAt", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayUnique)(),
     __metadata("design:type", Array)
 ], InviteTeamMemberDto.prototype, "permissions", void 0);
 //# sourceMappingURL=invite-team-member.dto.js.map

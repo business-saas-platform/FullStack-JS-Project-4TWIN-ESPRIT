@@ -10,6 +10,10 @@ type InviteEmailParams = {
   businessName: string;
   inviterEmail: string;
   inviteLink: string;
+
+  // ✅ NEW
+  role: string;
+  permissions: string[];
 };
 
 type OwnerApprovedEmailParams = {
@@ -72,11 +76,21 @@ export class MailService {
   }
 
   // =====================================================
-  // INVITE TEMPLATE
+  // INVITE TEMPLATE (✅ includes role + permissions)
   // =====================================================
   private buildInviteTemplate(params: InviteEmailParams) {
-    const { name, businessName, inviterEmail, inviteLink } = params;
+    const { name, businessName, inviterEmail, inviteLink, role, permissions } =
+      params;
     const year = new Date().getFullYear();
+
+    const permsHtml =
+      permissions && permissions.length
+        ? `<ul style="margin:10px 0 0;padding-left:18px;color:#374151;font-size:14px;line-height:1.7;">
+             ${permissions
+               .map((p) => `<li>${this.escapeHtml(p)}</li>`)
+               .join("")}
+           </ul>`
+        : `<p style="margin:8px 0 0;font-size:14px;color:#6b7280;"><i>Aucune permission spécifique</i></p>`;
 
     return `
 <!DOCTYPE html>
@@ -114,8 +128,21 @@ export class MailService {
 
               <p style="margin:0 0 12px;font-size:15px;line-height:1.7;color:#374151;">
                 <b>${this.escapeHtml(inviterEmail)}</b> vous a invité à rejoindre l’équipe de
-                <b style="color:#4f46e5;">${this.escapeHtml(businessName)}</b> sur notre plateforme.
+                <b style="color:#4f46e5;">${this.escapeHtml(
+                  businessName
+                )}</b> sur notre plateforme.
               </p>
+
+              <!-- ✅ role + permissions -->
+              <div style="margin:16px 0 18px;padding:14px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;">
+                <p style="margin:0;font-size:14px;color:#111827;">
+                  <b>Rôle :</b> ${this.escapeHtml(role)}
+                </p>
+                <p style="margin:10px 0 6px;font-size:14px;color:#111827;">
+                  <b>Permissions :</b>
+                </p>
+                ${permsHtml}
+              </div>
 
               <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#374151;">
                 Accédez à votre espace sécurisé pour collaborer, gérer les factures, les dépenses
@@ -170,7 +197,10 @@ export class MailService {
   private buildOwnerApprovedTemplate(params: OwnerApprovedEmailParams) {
     const { name, companyName, email, tempPassword, loginUrl } = params;
     const year = new Date().getFullYear();
-    const safeLoginUrl = loginUrl || process.env.APP_LOGIN_URL || "http://localhost:5173/auth/login";
+    const safeLoginUrl =
+      loginUrl ||
+      process.env.APP_LOGIN_URL ||
+      "http://localhost:5173/auth/login";
 
     return `
 <!DOCTYPE html>
@@ -207,7 +237,9 @@ export class MailService {
               </h2>
 
               <p style="margin:0 0 14px;font-size:15px;line-height:1.7;color:#374151;">
-                Votre demande d’inscription pour <b style="color:#16a34a;">${this.escapeHtml(companyName)}</b> a été <b>acceptée</b>.
+                Votre demande d’inscription pour <b style="color:#16a34a;">${this.escapeHtml(
+                  companyName
+                )}</b> a été <b>acceptée</b>.
               </p>
 
               <p style="margin:0 0 14px;font-size:15px;line-height:1.7;color:#374151;">
@@ -307,7 +339,9 @@ export class MailService {
               </h2>
 
               <p style="margin:0 0 14px;font-size:15px;line-height:1.7;color:#374151;">
-                Votre demande d’inscription pour <b style="color:#b91c1c;">${this.escapeHtml(companyName)}</b> a été <b>refusée</b>.
+                Votre demande d’inscription pour <b style="color:#b91c1c;">${this.escapeHtml(
+                  companyName
+                )}</b> a été <b>refusée</b>.
               </p>
 
               <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;">
@@ -349,7 +383,10 @@ export class MailService {
   private buildEmployeeCreatedTemplate(params: EmployeeCreatedEmailParams) {
     const { name, companyName, role, email, tempPassword, loginUrl } = params;
     const year = new Date().getFullYear();
-    const safeLoginUrl = loginUrl || process.env.APP_LOGIN_URL || "http://localhost:5173/auth/login";
+    const safeLoginUrl =
+      loginUrl ||
+      process.env.APP_LOGIN_URL ||
+      "http://localhost:5173/auth/login";
 
     return `
 <!DOCTYPE html>
@@ -386,7 +423,9 @@ export class MailService {
               </h2>
 
               <p style="margin:0 0 14px;font-size:15px;line-height:1.7;color:#374151;">
-                Un compte a été créé pour vous chez <b style="color:#0ea5e9;">${this.escapeHtml(companyName)}</b>.
+                Un compte a été créé pour vous chez <b style="color:#0ea5e9;">${this.escapeHtml(
+                  companyName
+                )}</b>.
               </p>
 
               <p style="margin:0 0 14px;font-size:15px;line-height:1.7;color:#374151;">

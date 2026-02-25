@@ -41,7 +41,6 @@ export class AuthService {
     const exists = await this.users.findOne({ where: { email } });
     if (exists) throw new ConflictException("Email already used");
 
-    // enforce strong password
     if (!this.isStrongPassword(dto.password)) {
       throw new BadRequestException(
         "Weak password (need 1 uppercase, 1 lowercase, 1 number, min 8)"
@@ -59,6 +58,7 @@ export class AuthService {
       mustChangePassword: false,
       loginAttempts: 0,
       lockedUntil: null,
+      permissions: ["*"], // ✅ default
     } as DeepPartial<UserEntity>);
 
     const saved = await this.users.save(user);
@@ -78,12 +78,10 @@ export class AuthService {
     const email = dto.email.toLowerCase().trim();
     const user = await this.users.findOne({ where: { email } });
 
-    // same generic error (don’t leak)
     if (!user || !user.passwordHash) {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    // locked?
     if (user.lockedUntil && new Date(user.lockedUntil).getTime() > Date.now()) {
       throw new UnauthorizedException("Account locked. Try again later.");
     }
@@ -94,15 +92,14 @@ export class AuthService {
       user.loginAttempts = (user.loginAttempts ?? 0) + 1;
 
       if (user.loginAttempts >= 3) {
-        user.lockedUntil = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-        user.loginAttempts = 0; // reset counter after lock
+        user.lockedUntil = new Date(Date.now() + 60 * 60 * 1000);
+        user.loginAttempts = 0;
       }
 
       await this.users.save(user);
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    // success => reset attempts
     user.loginAttempts = 0;
     user.lockedUntil = null;
     await this.users.save(user);
@@ -145,18 +142,17 @@ export class AuthService {
     user.passwordHash = await bcrypt.hash(newPassword, 10);
     user.mustChangePassword = false;
 
-    // also reset lock fields (safe)
     user.loginAttempts = 0;
     user.lockedUntil = null;
 
     const saved = await this.users.save(user);
-
     const token = await this.sign(saved);
+
     return { ok: true, access_token: token, user: this.toPublic(saved) };
   }
 
   // =====================================================
-  // ACCEPT INVITE (kept) + password policy
+  // ACCEPT INVITE (role + permissions ✅)
   // =====================================================
   async acceptInvite(dto: AcceptInviteDto) {
     const token = (dto.token || "").trim();
@@ -164,18 +160,11 @@ export class AuthService {
 
     const inv = await this.invites.findOne({ where: { token } });
     if (!inv) throw new BadRequestException("Invalid invitation token");
-    if (inv.status !== "pending")
-      throw new BadRequestException("Invitation already used");
-    if (new Date(inv.expiresAt).getTime() < Date.now())
-      throw new BadRequestException("Invitation expired");
+    if (inv.status !== "pending") throw new BadRequestException("Invitation already used");
+    if (new Date(inv.expiresAt).getTime() < Date.now()) throw new BadRequestException("Invitation expired");
 
     const email = inv.email.toLowerCase().trim();
 
-    const exists = await this.users.findOne({ where: { email } });
-    if (exists)
-      throw new ConflictException("Account already exists for this email");
-
-    // enforce strong password (invite flow)
     if (!this.isStrongPassword(dto.password)) {
       throw new BadRequestException(
         "Weak password (need 1 uppercase, 1 lowercase, 1 number, min 8)"
@@ -184,20 +173,45 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    const user = this.users.create({
-      email,
-      name: inv.name,
-      role: inv.role as any,
-      passwordHash,
-      businessId: inv.businessId,
-      mustChangePassword: false, // invite chooses password directly
-      loginAttempts: 0,
-      lockedUntil: null,
-    } as DeepPartial<UserEntity>);
+    // ✅ existing OAuth user allowed, attach to business
+    let user = await this.users.findOne({ where: { email } });
 
-    const savedUser = await this.users.save(user);
+    if (user) {
+      if (user.businessId && user.businessId !== inv.businessId) {
+        throw new ConflictException("This email already belongs to another business");
+      }
 
-    let member: TeamMemberEntity | null = await this.members.findOne({
+      user.name = user.name || inv.name;
+      user.passwordHash = passwordHash;
+      user.businessId = inv.businessId;
+      user.role = inv.role as any;
+
+      // ✅ permissions from invitation
+      user.permissions = (inv.permissions ?? user.permissions ?? []) as any;
+
+      user.mustChangePassword = false;
+      user.loginAttempts = 0;
+      user.lockedUntil = null;
+
+      user = await this.users.save(user);
+    } else {
+      user = await this.users.save(
+        this.users.create({
+          email,
+          name: inv.name,
+          role: inv.role as any,
+          passwordHash,
+          businessId: inv.businessId,
+          mustChangePassword: false,
+          loginAttempts: 0,
+          lockedUntil: null,
+          permissions: inv.permissions ?? [],
+        } as DeepPartial<UserEntity>)
+      );
+    }
+
+    // ✅ TeamMember record (joinedAt must be Date, not string)
+    let member = await this.members.findOne({
       where: { businessId: inv.businessId, email },
     });
 
@@ -207,15 +221,15 @@ export class AuthService {
         name: inv.name,
         email,
         role: inv.role as any,
-        status: "active",
+        status: "active" as any,
         permissions: inv.permissions ?? [],
-        joinedAt: new Date().toISOString(),
+        joinedAt: new Date(), // ✅ FIX
       } as DeepPartial<TeamMemberEntity>);
     } else {
-      member.status = "active";
+      member.status = "active" as any;
       member.permissions = inv.permissions ?? member.permissions ?? [];
       member.role = inv.role as any;
-      member.joinedAt = member.joinedAt || new Date().toISOString();
+      member.joinedAt = member.joinedAt ?? new Date(); // ✅ FIX
     }
 
     await this.members.save(member);
@@ -223,22 +237,19 @@ export class AuthService {
     inv.status = "accepted";
     await this.invites.save(inv);
 
-    const jwtToken = await this.sign(savedUser);
+    const jwtToken = await this.sign(user);
+
     return {
       access_token: jwtToken,
-      user: this.toPublic(savedUser),
-      mustChangePassword: !!savedUser.mustChangePassword,
+      user: this.toPublic(user),
+      mustChangePassword: !!user.mustChangePassword,
     };
   }
 
   // =====================================================
   // OAUTH SUPPORT (GOOGLE + GITHUB)
   // =====================================================
-  async validateOAuthUser(payload: {
-    email: string;
-    name: string;
-    provider: string;
-  }) {
+  async validateOAuthUser(payload: { email: string; name: string; provider: string }) {
     const email = payload.email?.toLowerCase().trim();
     if (!email) throw new UnauthorizedException("OAuth email not provided");
 
@@ -249,11 +260,11 @@ export class AuthService {
         email,
         name: payload.name,
         role: "business_owner" as any,
-        // ✅ laisse undefined (pas null)
         passwordHash: undefined,
         mustChangePassword: false,
         loginAttempts: 0,
         lockedUntil: null,
+        permissions: [],
       } as DeepPartial<UserEntity>);
 
       user = await this.users.save(user);
@@ -267,7 +278,7 @@ export class AuthService {
   }
 
   // =====================================================
-  // GITHUB / OAUTH LOGIN (corrigé sans casser le reste)
+  // GITHUB / OAUTH LOGIN
   // =====================================================
   async loginWithOAuth(oauthUser: {
     provider?: "github" | "google" | string;
@@ -279,7 +290,6 @@ export class AuthService {
   }) {
     const email = oauthUser.email ? oauthUser.email.toLowerCase().trim() : null;
 
-    // 1) chercher user par githubId (ou email)
     let user = await this.users.findOne({
       where: [
         { githubId: oauthUser.providerId } as any,
@@ -287,7 +297,6 @@ export class AuthService {
       ],
     });
 
-    // 2) créer user si pas trouvé
     if (!user) {
       user = this.users.create({
         email: email ?? undefined,
@@ -299,23 +308,17 @@ export class AuthService {
         mustChangePassword: false,
         loginAttempts: 0,
         lockedUntil: null,
+        permissions: [],
       } as DeepPartial<UserEntity>);
 
       user = await this.users.save(user);
     } else {
-      // si trouvé par email mais pas de githubId, on le lie
-      if (!(user as any).githubId) {
-        (user as any).githubId = oauthUser.providerId;
-      }
-      if (!user.avatar && oauthUser.avatar) {
-        user.avatar = oauthUser.avatar as any;
-      }
+      if (!(user as any).githubId) (user as any).githubId = oauthUser.providerId;
+      if (!user.avatar && oauthUser.avatar) user.avatar = oauthUser.avatar as any;
       user = await this.users.save(user);
     }
 
-    // 3) générer JWT (utilise ton sign() pour garder même payload)
     const access_token = await this.sign(user);
-
     return { access_token, user: this.toPublic(user) };
   }
 
@@ -328,6 +331,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
       businessId: user.businessId,
+      permissions: user.permissions ?? [], // ✅ in JWT
     });
   }
 
@@ -339,15 +343,13 @@ export class AuthService {
       role: u.role,
       avatar: u.avatar,
       businessId: u.businessId,
+      permissions: u.permissions ?? [], // ✅ for frontend
       mustChangePassword: !!u.mustChangePassword,
       lockedUntil: u.lockedUntil ? new Date(u.lockedUntil).toISOString() : null,
-      createdAt: u.createdAt
-        ? u.createdAt.toISOString()
-        : new Date().toISOString(),
+      createdAt: u.createdAt ? u.createdAt.toISOString() : new Date().toISOString(),
     };
   }
 
-  // password policy: 1 upper, 1 lower, 1 digit, min 8
   private isStrongPassword(pw: string) {
     return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(pw);
   }

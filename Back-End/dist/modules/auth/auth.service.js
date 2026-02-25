@@ -46,6 +46,7 @@ let AuthService = class AuthService {
             mustChangePassword: false,
             loginAttempts: 0,
             lockedUntil: null,
+            permissions: ["*"],
         });
         const saved = await this.users.save(user);
         const token = await this.sign(saved);
@@ -120,24 +121,38 @@ let AuthService = class AuthService {
         if (new Date(inv.expiresAt).getTime() < Date.now())
             throw new common_1.BadRequestException("Invitation expired");
         const email = inv.email.toLowerCase().trim();
-        const exists = await this.users.findOne({ where: { email } });
-        if (exists)
-            throw new common_1.ConflictException("Account already exists for this email");
         if (!this.isStrongPassword(dto.password)) {
             throw new common_1.BadRequestException("Weak password (need 1 uppercase, 1 lowercase, 1 number, min 8)");
         }
         const passwordHash = await bcrypt.hash(dto.password, 10);
-        const user = this.users.create({
-            email,
-            name: inv.name,
-            role: inv.role,
-            passwordHash,
-            businessId: inv.businessId,
-            mustChangePassword: false,
-            loginAttempts: 0,
-            lockedUntil: null,
-        });
-        const savedUser = await this.users.save(user);
+        let user = await this.users.findOne({ where: { email } });
+        if (user) {
+            if (user.businessId && user.businessId !== inv.businessId) {
+                throw new common_1.ConflictException("This email already belongs to another business");
+            }
+            user.name = user.name || inv.name;
+            user.passwordHash = passwordHash;
+            user.businessId = inv.businessId;
+            user.role = inv.role;
+            user.permissions = (inv.permissions ?? user.permissions ?? []);
+            user.mustChangePassword = false;
+            user.loginAttempts = 0;
+            user.lockedUntil = null;
+            user = await this.users.save(user);
+        }
+        else {
+            user = await this.users.save(this.users.create({
+                email,
+                name: inv.name,
+                role: inv.role,
+                passwordHash,
+                businessId: inv.businessId,
+                mustChangePassword: false,
+                loginAttempts: 0,
+                lockedUntil: null,
+                permissions: inv.permissions ?? [],
+            }));
+        }
         let member = await this.members.findOne({
             where: { businessId: inv.businessId, email },
         });
@@ -149,23 +164,23 @@ let AuthService = class AuthService {
                 role: inv.role,
                 status: "active",
                 permissions: inv.permissions ?? [],
-                joinedAt: new Date().toISOString(),
+                joinedAt: new Date(),
             });
         }
         else {
             member.status = "active";
             member.permissions = inv.permissions ?? member.permissions ?? [];
             member.role = inv.role;
-            member.joinedAt = member.joinedAt || new Date().toISOString();
+            member.joinedAt = member.joinedAt ?? new Date();
         }
         await this.members.save(member);
         inv.status = "accepted";
         await this.invites.save(inv);
-        const jwtToken = await this.sign(savedUser);
+        const jwtToken = await this.sign(user);
         return {
             access_token: jwtToken,
-            user: this.toPublic(savedUser),
-            mustChangePassword: !!savedUser.mustChangePassword,
+            user: this.toPublic(user),
+            mustChangePassword: !!user.mustChangePassword,
         };
     }
     async validateOAuthUser(payload) {
@@ -182,6 +197,7 @@ let AuthService = class AuthService {
                 mustChangePassword: false,
                 loginAttempts: 0,
                 lockedUntil: null,
+                permissions: [],
             });
             user = await this.users.save(user);
         }
@@ -209,16 +225,15 @@ let AuthService = class AuthService {
                 mustChangePassword: false,
                 loginAttempts: 0,
                 lockedUntil: null,
+                permissions: [],
             });
             user = await this.users.save(user);
         }
         else {
-            if (!user.githubId) {
+            if (!user.githubId)
                 user.githubId = oauthUser.providerId;
-            }
-            if (!user.avatar && oauthUser.avatar) {
+            if (!user.avatar && oauthUser.avatar)
                 user.avatar = oauthUser.avatar;
-            }
             user = await this.users.save(user);
         }
         const access_token = await this.sign(user);
@@ -230,6 +245,7 @@ let AuthService = class AuthService {
             email: user.email,
             role: user.role,
             businessId: user.businessId,
+            permissions: user.permissions ?? [],
         });
     }
     toPublic(u) {
@@ -240,11 +256,10 @@ let AuthService = class AuthService {
             role: u.role,
             avatar: u.avatar,
             businessId: u.businessId,
+            permissions: u.permissions ?? [],
             mustChangePassword: !!u.mustChangePassword,
             lockedUntil: u.lockedUntil ? new Date(u.lockedUntil).toISOString() : null,
-            createdAt: u.createdAt
-                ? u.createdAt.toISOString()
-                : new Date().toISOString(),
+            createdAt: u.createdAt ? u.createdAt.toISOString() : new Date().toISOString(),
         };
     }
     isStrongPassword(pw) {

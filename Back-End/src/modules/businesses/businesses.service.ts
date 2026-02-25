@@ -10,12 +10,16 @@ import { Repository } from "typeorm";
 import { BusinessEntity } from "./entities/business.entity";
 import { CreateBusinessDto } from "./dto/create-business.dto";
 import { UpdateBusinessDto } from "./dto/update-business.dto";
+import { TeamMemberEntity } from "../team-members/entities/team-member.entity";
 
 @Injectable()
 export class BusinessesService {
   constructor(
     @InjectRepository(BusinessEntity)
-    private readonly repo: Repository<BusinessEntity>
+    private readonly repo: Repository<BusinessEntity>,
+
+    @InjectRepository(TeamMemberEntity)
+    private readonly teamMembersRepo: Repository<TeamMemberEntity>
   ) {}
 
   // =====================================================
@@ -24,7 +28,28 @@ export class BusinessesService {
   findAll() {
     return this.repo.find({ order: { createdAt: "DESC" } });
   }
+  async getByIdForUser(user: any, businessId: string) {
+  const b = await this.repo.findOne({ where: { id: businessId } });
+  if (!b) throw new NotFoundException("Business not found");
 
+  if (user.role === "platform_admin") return b;
+
+  // owner
+  if (user.role === "business_owner" && b.ownerId === user.id) return b;
+
+  // member
+  const m = await this.teamMembersRepo.findOne({
+    where: { businessId, email: user.email.toLowerCase() },
+  });
+  if (!m) throw new ForbiddenException("No access to this business");
+
+  return b;
+}
+async getById(id: string) {
+  const b = await this.repo.findOne({ where: { id } as any });
+  if (!b) throw new NotFoundException("Business not found");
+  return b;
+}
   async findOne(id: string) {
     const b = await this.repo.findOne({ where: { id } });
     if (!b) throw new NotFoundException("Business not found");

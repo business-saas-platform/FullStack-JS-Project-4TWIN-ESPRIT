@@ -1,7 +1,16 @@
 import { createParamDecorator, ExecutionContext } from "@nestjs/common";
-import { TenantRequest } from "../middleware/tenant.middleware";
 
-export const BusinessId = createParamDecorator((_data: unknown, ctx: ExecutionContext) => {
-  const req = ctx.switchToHttp().getRequest<TenantRequest>();
-  return req.businessId;
-});
+export const BusinessId = createParamDecorator(
+  (_: unknown, ctx: ExecutionContext) => {
+    const req = ctx.switchToHttp().getRequest();
+
+    // priority: guard injected -> header -> query -> body
+    return (
+      req.businessId ||
+      req.headers["x-business-id"] ||
+      req.query?.businessId ||
+      req.body?.businessId ||
+      null
+    );
+  }
+);

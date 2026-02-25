@@ -20,15 +20,17 @@ const bcrypt = require("bcrypt");
 const registration_request_entity_1 = require("./entities/registration-request.entity");
 const user_entity_1 = require("../users/entities/user.entity");
 const business_entity_1 = require("../businesses/entities/business.entity");
-const mail_service_1 = require("../mail/mail.service");
 const team_member_entity_1 = require("../team-members/entities/team-member.entity");
+const mail_service_1 = require("../mail/mail.service");
 let RegistrationRequestsService = class RegistrationRequestsService {
-    constructor(requests, users, businesses, teamMembers, mail) {
+    constructor(dataSource, requests, users, businesses, teamMembers, mail) {
+        this.dataSource = dataSource;
         this.requests = requests;
         this.users = users;
         this.businesses = businesses;
         this.teamMembers = teamMembers;
         this.mail = mail;
+        this.ADD_OWNER_AS_TEAM_MEMBER = false;
     }
     async create(dto) {
         const ownerEmail = dto.ownerEmail.toLowerCase().trim();
@@ -54,79 +56,95 @@ let RegistrationRequestsService = class RegistrationRequestsService {
     }
     async list(status = "pending") {
         return this.requests.find({
-            where: { status },
+            where: { status: status },
             order: { createdAt: "DESC" },
         });
     }
     async approve(requestId, adminUser, dto) {
         if (adminUser.role !== "platform_admin")
-            throw new common_1.ForbiddenException();
+            throw new common_1.ForbiddenException("Platform admin only");
         const req = await this.requests.findOne({ where: { id: requestId } });
         if (!req)
             throw new common_1.NotFoundException("Request not found");
         if (req.status !== "pending")
             throw new common_1.BadRequestException("Request already reviewed");
-        const tempPassword = this.generateTempPassword();
-        const passwordHash = await bcrypt.hash(tempPassword, 10);
-        const owner = this.users.create({
-            email: req.ownerEmail,
-            name: req.ownerName,
-            role: "business_owner",
-            passwordHash,
-            mustChangePassword: true,
-            loginAttempts: 0,
-            lockedUntil: null,
+        const result = await this.dataSource.transaction(async (trx) => {
+            const requestsRepo = trx.getRepository(registration_request_entity_1.RegistrationRequestEntity);
+            const usersRepo = trx.getRepository(user_entity_1.UserEntity);
+            const businessesRepo = trx.getRepository(business_entity_1.BusinessEntity);
+            const teamMembersRepo = trx.getRepository(team_member_entity_1.TeamMemberEntity);
+            const existsUser = await usersRepo.findOne({ where: { email: req.ownerEmail } });
+            if (existsUser)
+                throw new common_1.ConflictException("Account already exists for this email");
+            const tempPassword = this.generateTempPassword();
+            const passwordHash = await bcrypt.hash(tempPassword, 10);
+            const owner = usersRepo.create({
+                email: req.ownerEmail,
+                name: req.ownerName,
+                role: "business_owner",
+                passwordHash,
+                mustChangePassword: true,
+                loginAttempts: 0,
+                lockedUntil: null,
+                permissions: ["*"],
+            });
+            const savedOwner = await usersRepo.save(owner);
+            const business = businessesRepo.create({
+                ownerId: savedOwner.id,
+                name: req.companyName,
+                type: req.companyCategory,
+                address: dto.address ?? req.companyAddress ?? "N/A",
+                city: dto.city ?? "N/A",
+                country: dto.country ?? "TN",
+                taxId: dto.taxId ?? req.companyTaxId ?? "N/A",
+                phone: dto.phone ?? req.companyPhone ?? "N/A",
+                email: dto.email ?? req.ownerEmail,
+                website: undefined,
+                currency: dto.currency ?? "TND",
+                fiscalYearStart: dto.fiscalYearStart ?? "01-01",
+                industry: dto.industry ?? req.companyCategory,
+                taxRate: 0,
+            });
+            const savedBusiness = await businessesRepo.save(business);
+            savedOwner.businessId = savedBusiness.id;
+            await usersRepo.save(savedOwner);
+            if (this.ADD_OWNER_AS_TEAM_MEMBER) {
+                const ownerMember = teamMembersRepo.create({
+                    businessId: savedBusiness.id,
+                    name: savedOwner.name,
+                    email: savedOwner.email,
+                    role: "business_admin",
+                    status: "active",
+                    permissions: ["*"],
+                    joinedAt: new Date(),
+                });
+                await teamMembersRepo.save(ownerMember);
+            }
+            req.status = "approved";
+            req.reviewedByAdminId = adminUser.id;
+            req.reviewedAt = new Date();
+            await requestsRepo.save(req);
+            return {
+                ownerId: savedOwner.id,
+                ownerEmail: savedOwner.email,
+                ownerName: savedOwner.name,
+                businessId: savedBusiness.id,
+                businessName: savedBusiness.name ?? req.companyName,
+                tempPassword,
+            };
         });
-        const savedOwner = await this.users.save(owner);
-        const business = this.businesses.create({
-            ownerId: savedOwner.id,
-            name: req.companyName,
-            type: req.companyCategory,
-            address: dto.address ?? req.companyAddress ?? "N/A",
-            city: dto.city ?? "N/A",
-            country: dto.country ?? "TN",
-            taxId: dto.taxId ?? req.companyTaxId ?? "N/A",
-            phone: dto.phone ?? req.companyPhone ?? "N/A",
-            email: dto.email ?? req.ownerEmail,
-            website: undefined,
-            currency: dto.currency ?? "TND",
-            fiscalYearStart: dto.fiscalYearStart ?? "01-01",
-            industry: dto.industry ?? req.companyCategory,
-            taxRate: 0,
+        await this.mail.sendOwnerApprovedEmail({
+            to: result.ownerEmail,
+            name: result.ownerName,
+            companyName: result.businessName,
+            email: result.ownerEmail,
+            tempPassword: result.tempPassword,
         });
-        const savedBusiness = await this.businesses.save(business);
-        savedOwner.businessId = savedBusiness.id;
-        await this.users.save(savedOwner);
-        const ownerMember = this.teamMembers.create({
-            businessId: savedBusiness.id,
-            name: savedOwner.name,
-            email: savedOwner.email,
-            role: "business_owner",
-            status: "active",
-            permissions: ["*"],
-            joinedAt: new Date().toISOString(),
-        });
-        await this.teamMembers.save(ownerMember);
-        req.status = "approved";
-        req.reviewedByAdminId = adminUser.id;
-        req.reviewedAt = new Date();
-        await this.requests.save(req);
-        await this.mail.sendOwnerApprovedEmail?.({
-            to: savedOwner.email,
-            name: savedOwner.name,
-            companyName: savedBusiness.name,
-            email: savedOwner.email,
-            tempPassword,
-        });
-        return {
-            ok: true,
-            ownerId: savedOwner.id,
-            businessId: savedBusiness.id,
-        };
+        return { ok: true, ownerId: result.ownerId, businessId: result.businessId };
     }
     async reject(requestId, adminUser, dto) {
         if (adminUser.role !== "platform_admin")
-            throw new common_1.ForbiddenException();
+            throw new common_1.ForbiddenException("Platform admin only");
         const req = await this.requests.findOne({ where: { id: requestId } });
         if (!req)
             throw new common_1.NotFoundException("Request not found");
@@ -137,7 +155,7 @@ let RegistrationRequestsService = class RegistrationRequestsService {
         req.reviewedByAdminId = adminUser.id;
         req.reviewedAt = new Date();
         await this.requests.save(req);
-        await this.mail.sendOwnerRejectedEmail?.({
+        await this.mail.sendOwnerRejectedEmail({
             to: req.ownerEmail,
             name: req.ownerName,
             companyName: req.companyName,
@@ -161,11 +179,12 @@ let RegistrationRequestsService = class RegistrationRequestsService {
 exports.RegistrationRequestsService = RegistrationRequestsService;
 exports.RegistrationRequestsService = RegistrationRequestsService = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, typeorm_1.InjectRepository)(registration_request_entity_1.RegistrationRequestEntity)),
-    __param(1, (0, typeorm_1.InjectRepository)(user_entity_1.UserEntity)),
-    __param(2, (0, typeorm_1.InjectRepository)(business_entity_1.BusinessEntity)),
-    __param(3, (0, typeorm_1.InjectRepository)(team_member_entity_1.TeamMemberEntity)),
-    __metadata("design:paramtypes", [typeorm_2.Repository,
+    __param(1, (0, typeorm_1.InjectRepository)(registration_request_entity_1.RegistrationRequestEntity)),
+    __param(2, (0, typeorm_1.InjectRepository)(user_entity_1.UserEntity)),
+    __param(3, (0, typeorm_1.InjectRepository)(business_entity_1.BusinessEntity)),
+    __param(4, (0, typeorm_1.InjectRepository)(team_member_entity_1.TeamMemberEntity)),
+    __metadata("design:paramtypes", [typeorm_2.DataSource,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

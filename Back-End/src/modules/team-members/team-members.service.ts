@@ -16,25 +16,42 @@ import { CreateTeamMemberDto } from "./dto/create-team-member.dto";
 import { UpdateTeamMemberDto } from "./dto/update-team-member.dto";
 import { InviteTeamMemberDto } from "./dto/invite-team-member.dto";
 
-// ✅ add mail service
 import { MailService } from "../mail/mail.service";
 
-type JwtUser = { sub: string; email: string; role: string };
+type JwtUser = {
+  sub: string;
+  email: string;
+  role: string;
+  businessId?: string;
+  permissions?: string[];
+};
 
 @Injectable()
 export class TeamMembersService {
   constructor(
-    @InjectRepository(TeamMemberEntity) private membersRepo: Repository<TeamMemberEntity>,
-    @InjectRepository(TeamInvitationEntity) private invitesRepo: Repository<TeamInvitationEntity>,
-    @InjectRepository(BusinessEntity) private businessRepo: Repository<BusinessEntity>,
+    @InjectRepository(TeamMemberEntity)
+    private readonly membersRepo: Repository<TeamMemberEntity>,
 
-    // ✅ inject mail service
-    private readonly mailService: MailService,
+    @InjectRepository(TeamInvitationEntity)
+    private readonly invitesRepo: Repository<TeamInvitationEntity>,
+
+    @InjectRepository(BusinessEntity)
+    private readonly businessRepo: Repository<BusinessEntity>,
+
+    private readonly mailService: MailService
   ) {}
 
-  // ---------- helpers ----------
+  // =============================
+  // HELPERS
+  // =============================
+  private normalizeEmail(email: string) {
+    return (email || "").trim().toLowerCase();
+  }
+
   private async assertOwnerOwnsBusiness(ownerId: string, businessId: string) {
-    const b = await this.businessRepo.findOne({ where: { id: businessId, ownerId } });
+    const b = await this.businessRepo.findOne({
+      where: { id: businessId, ownerId } as any,
+    });
     if (!b) throw new ForbiddenException("You don't own this business");
     return b;
   }
@@ -48,30 +65,41 @@ export class TeamMembersService {
     }
 
     const m = await this.membersRepo.findOne({
-      where: { businessId, email: user.email.toLowerCase() },
+      where: { businessId, email: this.normalizeEmail(user.email) },
     });
     if (!m) throw new ForbiddenException("No access to this business");
     return true;
   }
 
-  // ---------- INVITE (owner-only) ----------
+  // =============================
+  // INVITE (owner-only)
+  // =============================
   async inviteForOwner(user: JwtUser, dto: InviteTeamMemberDto) {
     if (!dto.businessId) throw new BadRequestException("businessId is required");
+    if (!dto.email) throw new BadRequestException("email is required");
+    if (!dto.name) throw new BadRequestException("name is required");
+    if (!dto.role) throw new BadRequestException("role is required");
 
-    // ✅ get business (for business name in email)
+    // ✅ owner check + get business name
     const business = await this.assertOwnerOwnsBusiness(user.sub, dto.businessId);
 
-    const email = dto.email.trim().toLowerCase();
+    const email = this.normalizeEmail(dto.email);
 
-    // ✅ create invitation row
+    // ✅ revoke old pending invites for same business+email
+    await this.invitesRepo.update(
+      { businessId: dto.businessId, email, status: "pending" as any },
+      { status: "revoked" as any }
+    );
+
     const token = randomUUID();
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 3); // 3 days
 
+    // ✅ create invitation row
     const invitation = this.invitesRepo.create({
       businessId: dto.businessId,
       email,
       name: dto.name.trim(),
-      role: dto.role,
+      role: dto.role as any,
       permissions: dto.permissions ?? [],
       token,
       expiresAt,
@@ -80,34 +108,41 @@ export class TeamMembersService {
 
     const savedInvitation = await this.invitesRepo.save(invitation);
 
-    // ✅ upsert invited team member (so it shows in list)
-    let member = await this.membersRepo.findOne({ where: { businessId: dto.businessId, email } });
+    // ✅ upsert team member as invited (FIXED: no array/null typing issues)
+    const existingMember = await this.membersRepo.findOne({
+      where: { businessId: dto.businessId, email },
+    });
 
-    if (!member) {
-      member = this.membersRepo.create({
+    let memberEntity: TeamMemberEntity;
+
+    if (!existingMember) {
+      memberEntity = this.membersRepo.create({
         businessId: dto.businessId,
         name: dto.name.trim(),
         email,
         role: dto.role as any,
         status: "invited",
         permissions: dto.permissions ?? [],
-        joinedAt: new Date().toISOString(),
+        joinedAt: null, // ✅ invited => null
       });
     } else {
-      member.name = dto.name.trim();
-      member.role = dto.role as any;
-      member.status = "invited";
-      member.permissions = dto.permissions ?? [];
-      member.joinedAt = member.joinedAt || new Date().toISOString();
+      existingMember.name = dto.name.trim();
+      existingMember.role = dto.role as any;
+      existingMember.status = "invited";
+      existingMember.permissions =
+        dto.permissions ?? existingMember.permissions ?? [];
+      existingMember.joinedAt = existingMember.joinedAt ?? null;
+
+      memberEntity = existingMember;
     }
 
-    const savedMember = await this.membersRepo.save(member);
+    const savedMember = await this.membersRepo.save(memberEntity);
 
     const inviteLink =
       `${process.env.FRONTEND_URL || "http://localhost:5173"}` +
       `/auth/accept-invite?token=${encodeURIComponent(token)}`;
 
-    // ✅ SEND EMAIL (FREE via Gmail SMTP)
+    // ✅ send invite email (role + permissions)
     try {
       await this.mailService.sendInviteEmail({
         to: email,
@@ -115,12 +150,12 @@ export class TeamMembersService {
         businessName: (business as any).name || "Your Business",
         inviterEmail: user.email,
         inviteLink,
+        role: dto.role,
+        permissions: dto.permissions ?? [],
       });
+    } catch (e: any) {
+      console.log("Invite email failed:", e?.message || e);
     }
-    catch (e: any) {
-  console.log("Invite email failed:", e?.message || e);
-}
-
 
     return {
       invitation: savedInvitation,
@@ -129,22 +164,27 @@ export class TeamMembersService {
     };
   }
 
-  // ---------- owner-only CRUD ----------
+  // =============================
+  // OWNER-ONLY direct create member
+  // =============================
   async createForOwner(user: JwtUser, dto: CreateTeamMemberDto) {
     if (!dto.businessId) throw new BadRequestException("businessId is required");
     await this.assertOwnerOwnsBusiness(user.sub, dto.businessId);
 
-    const email = dto.email.trim().toLowerCase();
+    const email = this.normalizeEmail(dto.email);
 
-    const exists = await this.membersRepo.findOne({ where: { businessId: dto.businessId, email } });
+    const exists = await this.membersRepo.findOne({
+      where: { businessId: dto.businessId, email },
+    });
     if (exists) throw new BadRequestException("Member already exists for this business");
 
     const entity = this.membersRepo.create({
       ...dto,
       email,
-      status: dto.status ?? "active",
-      permissions: dto.permissions ?? [],
-    });
+      status: (dto as any).status ?? "active",
+      permissions: (dto as any).permissions ?? [],
+      joinedAt: new Date(), // ✅ active now
+    } as any);
 
     return this.membersRepo.save(entity);
   }
@@ -156,6 +196,12 @@ export class TeamMembersService {
     await this.assertOwnerOwnsBusiness(user.sub, m.businessId);
 
     Object.assign(m, dto);
+
+    // normalize email if updated
+    if ((dto as any).email) {
+      (m as any).email = this.normalizeEmail((dto as any).email);
+    }
+
     return this.membersRepo.save(m);
   }
 
@@ -169,7 +215,9 @@ export class TeamMembersService {
     return { deleted: true, id };
   }
 
-  // ---------- read actions ----------
+  // =============================
+  // READ actions
+  // =============================
   async findAllForUser(user: JwtUser, businessId?: string) {
     if (!businessId) throw new BadRequestException("businessId query param is required");
 
@@ -177,7 +225,7 @@ export class TeamMembersService {
 
     return this.membersRepo.find({
       where: { businessId },
-      order: { createdAt: "DESC" },
+      order: { createdAt: "DESC" as any },
     });
   }
 

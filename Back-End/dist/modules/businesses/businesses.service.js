@@ -17,12 +17,35 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const business_entity_1 = require("./entities/business.entity");
+const team_member_entity_1 = require("../team-members/entities/team-member.entity");
 let BusinessesService = class BusinessesService {
-    constructor(repo) {
+    constructor(repo, teamMembersRepo) {
         this.repo = repo;
+        this.teamMembersRepo = teamMembersRepo;
     }
     findAll() {
         return this.repo.find({ order: { createdAt: "DESC" } });
+    }
+    async getByIdForUser(user, businessId) {
+        const b = await this.repo.findOne({ where: { id: businessId } });
+        if (!b)
+            throw new common_1.NotFoundException("Business not found");
+        if (user.role === "platform_admin")
+            return b;
+        if (user.role === "business_owner" && b.ownerId === user.id)
+            return b;
+        const m = await this.teamMembersRepo.findOne({
+            where: { businessId, email: user.email.toLowerCase() },
+        });
+        if (!m)
+            throw new common_1.ForbiddenException("No access to this business");
+        return b;
+    }
+    async getById(id) {
+        const b = await this.repo.findOne({ where: { id } });
+        if (!b)
+            throw new common_1.NotFoundException("Business not found");
+        return b;
     }
     async findOne(id) {
         const b = await this.repo.findOne({ where: { id } });
@@ -110,6 +133,8 @@ exports.BusinessesService = BusinessesService;
 exports.BusinessesService = BusinessesService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(business_entity_1.BusinessEntity)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __param(1, (0, typeorm_1.InjectRepository)(team_member_entity_1.TeamMemberEntity)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository])
 ], BusinessesService);
 //# sourceMappingURL=businesses.service.js.map
