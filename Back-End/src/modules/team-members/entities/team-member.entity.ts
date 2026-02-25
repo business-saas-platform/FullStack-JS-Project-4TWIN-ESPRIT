@@ -1,30 +1,33 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
-import { TeamMemberRole, TeamMemberStatus } from "../../../common/enums";
 
 @Entity("team_members")
 export class TeamMemberEntity {
-  @PrimaryGeneratedColumn("uuid") id!: string;
+  @PrimaryGeneratedColumn("uuid")
+  id!: string;
 
   @Index()
-  @Column({ type: "uuid" }) businessId!: string;
+  @Column({ type: "uuid" })
+  businessId!: string;
 
-  @Column() name!: string;
-  @Column() email!: string;
+  @Index()
+  @Column()
+  email!: string;
 
-  @Column({ type: "enum", enum: ["business_owner","business_admin","accountant","team_member"] })
-  role!: TeamMemberRole;
+  @Column()
+  name!: string;
 
-  @Column({ nullable: true }) avatar?: string;
-  @Column({ nullable: true }) phone?: string;
+  @Column({ type: "enum", enum: ["business_admin", "accountant", "team_member"] })
+  role!: "business_admin" | "accountant" | "team_member";
 
-  @Column({ type: "enum", enum: ["active","inactive","invited"], default: "active" })
-  status!: TeamMemberStatus;
+  @Column({ type: "enum", enum: ["invited", "active", "disabled"], default: "invited" })
+  status!: "invited" | "active" | "disabled";
 
   @Column({ type: "text", array: true, default: () => "ARRAY[]::text[]" })
   permissions!: string[];
 
-  @Column() joinedAt!: string;
-  @Column({ nullable: true }) lastActive?: string;
+  @Column({ type: "timestamptz", nullable: true })
+  joinedAt!: Date | null;
 
-  @CreateDateColumn() createdAt!: Date;
+  @CreateDateColumn()
+  createdAt!: Date;
 }

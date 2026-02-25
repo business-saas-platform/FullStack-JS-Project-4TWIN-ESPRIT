@@ -16,6 +16,8 @@ const user_entity_1 = require("../users/entities/user.entity");
 const business_entity_1 = require("../businesses/entities/business.entity");
 const team_member_entity_1 = require("../team-members/entities/team-member.entity");
 const mail_module_1 = require("../mail/mail.module");
+const auth_module_1 = require("../auth/auth.module");
+const platform_admin_db_guard_1 = require("../../common/guards/platform-admin-db.guard");
 let RegistrationRequestsModule = class RegistrationRequestsModule {
 };
 exports.RegistrationRequestsModule = RegistrationRequestsModule;
@@ -29,9 +31,10 @@ exports.RegistrationRequestsModule = RegistrationRequestsModule = __decorate([
                 team_member_entity_1.TeamMemberEntity,
             ]),
             mail_module_1.MailModule,
+            auth_module_1.AuthModule,
         ],
         controllers: [registration_requests_controller_1.RegistrationRequestsController],
-        providers: [registration_requests_service_1.RegistrationRequestsService],
+        providers: [registration_requests_service_1.RegistrationRequestsService, platform_admin_db_guard_1.PlatformAdminDbGuard],
     })
 ], RegistrationRequestsModule);
 //# sourceMappingURL=registration-requests.module.js.map

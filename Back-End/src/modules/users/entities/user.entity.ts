@@ -35,10 +35,13 @@ export class UserEntity {
   @Column({ type: "uuid", nullable: true })
   businessId?: string;
 
+  // ✅ NEW
+  @Column({ type: "text", array: true, default: () => "ARRAY[]::text[]" })
+  permissions!: string[];
+
   @Column({ type: "boolean", default: false })
   mustChangePassword!: boolean;
 
-  // ✅ brute-force protection (keep only these)
   @Column({ type: "int", default: 0 })
   loginAttempts!: number;
 

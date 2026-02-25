@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useState,
   ReactNode,
+  useCallback,
 } from "react";
 
 import type { Business } from "@/shared/lib/mockData";
@@ -15,11 +16,9 @@ type BusinessState = {
   businesses: Business[];
   isReady: boolean;
 
-  // New style (id-based)
   currentBusinessId: string | null;
   setCurrentBusinessId: (id: string | null) => void;
 
-  // Backward-compatible (object-based)
   currentBusiness: Business | null;
   setCurrentBusiness: (b: Business | null) => void;
 
@@ -30,6 +29,14 @@ const BusinessContext = createContext<BusinessState | undefined>(undefined);
 
 const KEY = "current_business_id";
 
+function readStoredBusinessId() {
+  const raw = localStorage.getItem(KEY);
+  if (!raw) return null;
+  if (raw === "null" || raw === "undefined") return null;
+  const v = raw.trim();
+  return v.length ? v : null;
+}
+
 export function BusinessProvider({ children }: { children: ReactNode }) {
   const { user, isReady: authReady } = useAuth();
 
@@ -37,23 +44,26 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
   const [isReady, setReady] = useState(false);
 
   const [currentBusinessId, setCurrentBusinessIdState] = useState<string | null>(
-    () => localStorage.getItem(KEY)
+    () => readStoredBusinessId()
   );
 
-  const setCurrentBusinessId = (id: string | null) => {
+  const setCurrentBusinessId = useCallback((id: string | null) => {
     setCurrentBusinessIdState(id);
+
     if (id) localStorage.setItem(KEY, id);
     else localStorage.removeItem(KEY);
 
     window.dispatchEvent(new Event("business-changed"));
-  };
+  }, []);
 
-  // Backward-compatible setter (accepts business object)
-  const setCurrentBusiness = (b: Business | null) => {
-    setCurrentBusinessId(b ? String((b as any).id) : null);
-  };
+  const setCurrentBusiness = useCallback(
+    (b: Business | null) => {
+      setCurrentBusinessId(b ? String((b as any).id) : null);
+    },
+    [setCurrentBusinessId]
+  );
 
-  const refreshBusinesses = async () => {
+  const refreshBusinesses = useCallback(async () => {
     if (!user) {
       setBusinesses([]);
       setCurrentBusinessIdState(null);
@@ -61,82 +71,76 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Owner: list businesses
+    // ✅ OWNER: multiple businesses
     if (user.role === "business_owner") {
       const list = await BusinessesApi.listMine();
       setBusinesses(list);
 
-      const storedId = localStorage.getItem(KEY);
+      const storedId = readStoredBusinessId();
+      const nextId =
+        storedId && list.some((b: any) => String(b.id) === String(storedId))
+          ? String(storedId)
+          : list[0]
+          ? String((list[0] as any).id)
+          : null;
 
-      // If no stored id -> pick first
-      if (!storedId && list.length) {
-        setCurrentBusinessIdState(String((list[0] as any).id));
-        localStorage.setItem(KEY, String((list[0] as any).id));
-        return;
-      }
-
-      // If stored id is invalid -> fallback
-      if (storedId && list.length) {
-        const exists = list.some((b: any) => String(b.id) === String(storedId));
-        if (!exists) {
-          setCurrentBusinessIdState(String((list[0] as any).id));
-          localStorage.setItem(KEY, String((list[0] as any).id));
-        } else {
-          setCurrentBusinessIdState(String(storedId));
-        }
-      }
-
-      // If list empty -> clear
-      if (!list.length) {
-        setCurrentBusinessIdState(null);
-        localStorage.removeItem(KEY);
-      }
+      setCurrentBusinessIdState(nextId);
+      if (nextId) localStorage.setItem(KEY, nextId);
+      else localStorage.removeItem(KEY);
 
       return;
     }
 
-    // Non-owner users: single business id from user
+    // ✅ NON-OWNER: single business from user.businessId
     const bid = (user as any).businessId ? String((user as any).businessId) : null;
+
     setCurrentBusinessIdState(bid);
     if (bid) localStorage.setItem(KEY, bid);
     else localStorage.removeItem(KEY);
 
-    setBusinesses([]);
-  };
+    // ✅ IMPORTANT: fetch business so UI shows it (switcher + name)
+    if (bid) {
+      try {
+        const b = await BusinessesApi.getById(bid);
+        setBusinesses([b]);
+      } catch {
+        // invalid or not accessible
+        setBusinesses([]);
+        setCurrentBusinessIdState(null);
+        localStorage.removeItem(KEY);
+      }
+    } else {
+      setBusinesses([]);
+    }
+  }, [user]);
 
+  // initial + when user changes
   useEffect(() => {
     if (!authReady) return;
 
     refreshBusinesses()
       .catch(() => setBusinesses([]))
       .finally(() => setReady(true));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authReady, user?.id]);
+  }, [authReady, user?.id, user?.role, (user as any)?.businessId, refreshBusinesses]);
 
-  // Listen to auth changes
+  // auth-changed => reload businesses
   useEffect(() => {
     const onAuthChanged = () => {
       refreshBusinesses().catch(() => null);
     };
     window.addEventListener("auth-changed", onAuthChanged);
     return () => window.removeEventListener("auth-changed", onAuthChanged);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [refreshBusinesses]);
 
-  // Listen to business changes (storage updated)
+  // business-changed => just update currentBusinessId from storage (DON’T refetch)
   useEffect(() => {
     const onBusinessChanged = () => {
-      const stored = localStorage.getItem(KEY);
-      setCurrentBusinessIdState(stored);
-      refreshBusinesses().catch(() => null);
+      setCurrentBusinessIdState(readStoredBusinessId());
     };
-
     window.addEventListener("business-changed", onBusinessChanged);
     return () => window.removeEventListener("business-changed", onBusinessChanged);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, []);
 
-  // ✅ currentBusiness computed from businesses + currentBusinessId
   const currentBusiness = useMemo(() => {
     if (!currentBusinessId) return null;
     return (
@@ -154,7 +158,15 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
       setCurrentBusiness,
       refreshBusinesses,
     }),
-    [businesses, isReady, currentBusinessId, currentBusiness]
+    [
+      businesses,
+      isReady,
+      currentBusinessId,
+      setCurrentBusinessId,
+      currentBusiness,
+      setCurrentBusiness,
+      refreshBusinesses,
+    ]
   );
 
   return (
@@ -168,7 +180,6 @@ export function useBusiness() {
   return ctx;
 }
 
-// Backward-compatible alias
 export function useBusinessContext() {
   return useBusiness();
 }

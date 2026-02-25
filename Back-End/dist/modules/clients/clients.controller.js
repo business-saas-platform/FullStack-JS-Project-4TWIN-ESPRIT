@@ -20,6 +20,8 @@ const update_client_dto_1 = require("./dto/update-client.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const business_access_guard_1 = require("../../common/guards/business-access.guard");
 const business_id_decorator_1 = require("../../common/decorators/business-id.decorator");
+const permissions_guard_1 = require("../../common/guards/permissions.guard");
+const permissions_decorator_1 = require("../../common/decorators/permissions.decorator");
 let ClientsController = class ClientsController {
     constructor(s) {
         this.s = s;
@@ -43,6 +45,7 @@ let ClientsController = class ClientsController {
 exports.ClientsController = ClientsController;
 __decorate([
     (0, common_1.Post)(),
+    (0, permissions_decorator_1.RequirePermissions)("clients:create"),
     __param(0, (0, business_id_decorator_1.BusinessId)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -51,6 +54,7 @@ __decorate([
 ], ClientsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    (0, permissions_decorator_1.RequirePermissions)("clients:read"),
     __param(0, (0, business_id_decorator_1.BusinessId)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -58,6 +62,7 @@ __decorate([
 ], ClientsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(":id"),
+    (0, permissions_decorator_1.RequirePermissions)("clients:read"),
     __param(0, (0, business_id_decorator_1.BusinessId)()),
     __param(1, (0, common_1.Param)("id")),
     __metadata("design:type", Function),
@@ -66,6 +71,7 @@ __decorate([
 ], ClientsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(":id"),
+    (0, permissions_decorator_1.RequirePermissions)("clients:update"),
     __param(0, (0, business_id_decorator_1.BusinessId)()),
     __param(1, (0, common_1.Param)("id")),
     __param(2, (0, common_1.Body)()),
@@ -75,6 +81,7 @@ __decorate([
 ], ClientsController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(":id"),
+    (0, permissions_decorator_1.RequirePermissions)("clients:delete"),
     __param(0, (0, business_id_decorator_1.BusinessId)()),
     __param(1, (0, common_1.Param)("id")),
     __metadata("design:type", Function),
@@ -83,7 +90,7 @@ __decorate([
 ], ClientsController.prototype, "remove", null);
 exports.ClientsController = ClientsController = __decorate([
     (0, common_1.Controller)("clients"),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, business_access_guard_1.BusinessAccessGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, business_access_guard_1.BusinessAccessGuard, permissions_guard_1.PermissionsGuard),
     __metadata("design:paramtypes", [clients_service_1.ClientsService])
 ], ClientsController);
 //# sourceMappingURL=clients.controller.js.map

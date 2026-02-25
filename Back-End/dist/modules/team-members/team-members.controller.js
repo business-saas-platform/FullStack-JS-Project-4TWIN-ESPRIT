@@ -20,6 +20,7 @@ const update_team_member_dto_1 = require("./dto/update-team-member.dto");
 const invite_team_member_dto_1 = require("./dto/invite-team-member.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const owner_guard_1 = require("../auth/owner.guard");
+const business_id_decorator_1 = require("../../common/decorators/business-id.decorator");
 let TeamMembersController = class TeamMembersController {
     constructor(s) {
         this.s = s;
@@ -65,7 +66,7 @@ __decorate([
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Query)("businessId")),
+    __param(1, (0, business_id_decorator_1.BusinessId)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)

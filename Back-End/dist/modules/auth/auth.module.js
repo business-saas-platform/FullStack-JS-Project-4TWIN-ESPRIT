@@ -18,16 +18,16 @@ const jwt_strategy_1 = require("./jwt.strategy");
 const user_entity_1 = require("../users/entities/user.entity");
 const team_invitation_entity_1 = require("../team-members/entities/team-invitation.entity");
 const team_member_entity_1 = require("../team-members/entities/team-member.entity");
-const google_strategy_1 = require("./google.strategy");
-const github_strategy_1 = require("./github.strategy");
+const jwt_auth_guard_1 = require("./jwt-auth.guard");
+const owner_guard_1 = require("./owner.guard");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
 exports.AuthModule = AuthModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            config_1.ConfigModule,
-            passport_1.PassportModule.register({ session: false }),
+            typeorm_1.TypeOrmModule.forFeature([user_entity_1.UserEntity, team_invitation_entity_1.TeamInvitationEntity, team_member_entity_1.TeamMemberEntity]),
+            passport_1.PassportModule.register({ defaultStrategy: "jwt" }),
             jwt_1.JwtModule.registerAsync({
                 imports: [config_1.ConfigModule],
                 inject: [config_1.ConfigService],
@@ -36,11 +36,10 @@ exports.AuthModule = AuthModule = __decorate([
                     signOptions: { expiresIn: "7d" },
                 }),
             }),
-            typeorm_1.TypeOrmModule.forFeature([user_entity_1.UserEntity, team_invitation_entity_1.TeamInvitationEntity, team_member_entity_1.TeamMemberEntity]),
         ],
         controllers: [auth_controller_1.AuthController],
-        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, google_strategy_1.GoogleStrategy, github_strategy_1.GithubStrategy],
-        exports: [auth_service_1.AuthService],
+        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, jwt_auth_guard_1.JwtAuthGuard, owner_guard_1.OwnerGuard],
+        exports: [auth_service_1.AuthService, jwt_1.JwtModule, passport_1.PassportModule, jwt_auth_guard_1.JwtAuthGuard, owner_guard_1.OwnerGuard],
     })
 ], AuthModule);
 //# sourceMappingURL=auth.module.js.map

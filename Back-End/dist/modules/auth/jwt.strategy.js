@@ -16,15 +16,26 @@ const passport_jwt_1 = require("passport-jwt");
 const config_1 = require("@nestjs/config");
 let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy, "jwt") {
     constructor(config) {
+        const secret = config.get("JWT_SECRET");
+        if (!secret) {
+            throw new common_1.UnauthorizedException("JWT_SECRET is missing in environment");
+        }
         super({
             jwtFromRequest: passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: config.get("JWT_SECRET"),
+            secretOrKey: secret,
         });
         this.config = config;
     }
     async validate(payload) {
-        return payload;
+        return {
+            sub: payload.sub,
+            id: payload.sub,
+            email: payload.email,
+            role: payload.role,
+            businessId: payload.businessId ?? null,
+            permissions: payload.permissions ?? [],
+        };
     }
 };
 exports.JwtStrategy = JwtStrategy;

@@ -56,6 +56,10 @@ __decorate([
     __metadata("design:type", String)
 ], UserEntity.prototype, "businessId", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: "text", array: true, default: () => "ARRAY[]::text[]" }),
+    __metadata("design:type", Array)
+], UserEntity.prototype, "permissions", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: "boolean", default: false }),
     __metadata("design:type", Boolean)
 ], UserEntity.prototype, "mustChangePassword", void 0);

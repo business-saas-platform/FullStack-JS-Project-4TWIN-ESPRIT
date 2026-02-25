@@ -1,30 +1,72 @@
 import { Type } from "class-transformer";
-import { IsArray, IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, ValidateNested } from "class-validator";
+import {
+  IsArray,
+  IsIn,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from "class-validator";
 
 export class CreateInvoiceItemDto {
-  @IsString() @IsNotEmpty() description!: string;
-  @IsNumber() quantity!: number;
-  @IsNumber() unitPrice!: number;
+  @IsString()
+  @IsNotEmpty()
+  description!: string;
+
+  @IsNumber()
+  quantity!: number;
+
+  @IsNumber()
+  unitPrice!: number;
+
   @IsOptional()
-  @IsNumber() taxRate!: number;
+  @IsNumber()
+  taxRate?: number;
 }
 
 export class CreateInvoiceDto {
-  @IsString() @IsNotEmpty() invoiceNumber!: string;
-  @IsUUID() businessId!: string;
-  @IsUUID() clientId!: string;
-  @IsString() @IsNotEmpty() clientName!: string;
-  @IsString() issueDate!: string;
-  @IsString() dueDate!: string;
+  @IsString()
+  @IsNotEmpty()
+  invoiceNumber!: string;
+
+  // ✅ make optional (businessId comes from guard/header)
+  @IsOptional()
+  @IsUUID()
+  businessId?: string;
+
+  @IsUUID()
+  clientId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  clientName!: string;
+
+  @IsString()
+  issueDate!: string;
+
+  @IsString()
+  dueDate!: string;
 
   @IsOptional()
-  @IsIn(["draft","sent","viewed","paid","overdue","cancelled"])
+  @IsIn(["draft", "sent", "viewed", "paid", "overdue", "cancelled"])
   status?: any;
 
-  @IsNumber() paidAmount!: number;
-  @IsString() currency!: string;
+  @IsOptional()
+  @IsNumber()
+  paidAmount?: number;
 
-  @IsOptional() @IsString() notes?: string;
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+  @IsOptional()
+  @IsNumber()
+  taxRate?: number;
 
   @IsArray()
   @ValidateNested({ each: true })

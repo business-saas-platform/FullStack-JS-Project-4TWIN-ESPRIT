@@ -8,19 +8,18 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { JwtStrategy } from "./jwt.strategy";
+
 import { UserEntity } from "../users/entities/user.entity";
 import { TeamInvitationEntity } from "../team-members/entities/team-invitation.entity";
 import { TeamMemberEntity } from "../team-members/entities/team-member.entity";
 
-// + GoogleStrategy / GithubStrategy si tu les as
-import { GoogleStrategy } from "./google.strategy";
-import { GithubStrategy } from "./github.strategy";
+import { JwtAuthGuard } from "./jwt-auth.guard";
+import { OwnerGuard } from "./owner.guard";
 
 @Module({
   imports: [
-    ConfigModule,
-    PassportModule.register({ session: false }),
-
+    TypeOrmModule.forFeature([UserEntity, TeamInvitationEntity, TeamMemberEntity]),
+    PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -29,11 +28,9 @@ import { GithubStrategy } from "./github.strategy";
         signOptions: { expiresIn: "7d" },
       }),
     }),
-
-    TypeOrmModule.forFeature([UserEntity, TeamInvitationEntity, TeamMemberEntity]),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy],
-  exports: [AuthService],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard, OwnerGuard],
+  exports: [AuthService, JwtModule, PassportModule, JwtAuthGuard, OwnerGuard],
 })
 export class AuthModule {}

@@ -1,3 +1,4 @@
+// src/shared/contexts/AuthContext.tsx
 import React, {
   createContext,
   useContext,
@@ -9,13 +10,17 @@ import React, {
 import { AuthApi } from "@/shared/lib/services/auth";
 
 export type User = {
-  id: string; // ✅ UUID
+  id: string;
   name: string;
   email: string;
-  role: string; // platform_admin | business_owner | ...
-  businessId?: string | null; // ✅ UUID
-  mustChangePassword?: boolean; // ✅ optional
-  lockedUntil?: string | null; // ✅ optional
+  role: string;
+  businessId?: string | null;
+
+  // backend: ["invoices.read", ...] or ["*"]
+  permissions?: string[];
+
+  mustChangePassword?: boolean;
+  lockedUntil?: string | null;
 };
 
 type LoginResult = {
@@ -27,7 +32,6 @@ type AuthState = {
   user: User | null;
   isReady: boolean;
 
-  // ✅ now supports captchaToken and returns mustChangePassword
   login: (email: string, password: string, captchaToken?: string) => Promise<LoginResult>;
 
   register: (payload: {
@@ -40,10 +44,14 @@ type AuthState = {
 
   acceptInvite: (payload: { token: string; password: string }) => Promise<User>;
 
-  // ✅ new: first-login password change
   changePasswordFirst: (newPassword: string) => Promise<User>;
 
   logout: () => void;
+
+  // helpers
+  hasPermission: (perm: string) => boolean;
+  hasAnyPermission: (perms: string[]) => boolean;
+  hasAllPermissions: (perms: string[]) => boolean;
 };
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -51,22 +59,55 @@ const AuthContext = createContext<AuthState | undefined>(undefined);
 const USER_KEY = "auth_user";
 const TOKEN_KEY = "access_token";
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(USER_KEY) || "null");
-    } catch {
-      return null;
-    }
-  });
+function normalizePermissions(input: any): string[] {
+  if (!Array.isArray(input)) return [];
+  return input.filter((x) => typeof x === "string").map((x) => x.trim()).filter(Boolean);
+}
 
+function safeParseUser(raw: string | null): User | null {
+  if (!raw) return null;
+  try {
+    const u = JSON.parse(raw);
+    if (!u) return null;
+    return {
+      ...u,
+      permissions: normalizePermissions(u.permissions),
+    } as User;
+  } catch {
+    return null;
+  }
+}
+
+// normalize "invoices:read" <-> "invoices.read"
+function permVariants(p: string): string[] {
+  const a = p.trim();
+  if (!a) return [];
+  const dot = a.replace(/:/g, ".");
+  const colon = a.replace(/\./g, ":");
+  return Array.from(new Set([a, dot, colon]));
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(() => safeParseUser(localStorage.getItem(USER_KEY)));
   const [isReady, setReady] = useState(false);
+
+  const persistUser = (u: User | null) => {
+    setUser(u);
+    if (!u) {
+      localStorage.removeItem(USER_KEY);
+      return;
+    }
+    localStorage.setItem(USER_KEY, JSON.stringify(u));
+  };
 
   const syncMe = async (): Promise<User> => {
     const me = (await AuthApi.me()) as User;
-    setUser(me);
-    localStorage.setItem(USER_KEY, JSON.stringify(me));
-    return me;
+    const normalized: User = {
+      ...me,
+      permissions: normalizePermissions((me as any).permissions),
+    };
+    persistUser(normalized);
+    return normalized;
   };
 
   useEffect(() => {
@@ -81,43 +122,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
         localStorage.removeItem("current_business_id");
-        setUser(null);
+        persistUser(null);
       })
       .finally(() => setReady(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const value = useMemo<AuthState>(
-    () => ({
+  const value = useMemo<AuthState>(() => {
+    const perms = normalizePermissions(user?.permissions);
+
+    const isSuper =
+      user?.role === "platform_admin" || user?.role === "business_owner";
+
+    const hasPermission = (perm: string) => {
+      if (!user) return false;
+      if (isSuper) return true;
+
+      // wildcard
+      if (perms.includes("*")) return true;
+
+      // support ":" and "."
+      const variants = permVariants(perm);
+      return variants.some((v) => perms.includes(v));
+    };
+
+    const hasAnyPermission = (list: string[]) => {
+      if (!user) return false;
+      if (isSuper) return true;
+      if (perms.includes("*")) return true;
+
+      return list.some((p) => hasPermission(p));
+    };
+
+    const hasAllPermissions = (list: string[]) => {
+      if (!user) return false;
+      if (isSuper) return true;
+      if (perms.includes("*")) return true;
+
+      return list.every((p) => hasPermission(p));
+    };
+
+    return {
       user,
       isReady,
 
+      hasPermission,
+      hasAnyPermission,
+      hasAllPermissions,
+
       login: async (email, password, captchaToken) => {
-        // backend returns: { access_token, user, mustChangePassword }
         const res: any = await AuthApi.login(email, password, captchaToken);
 
-        // ✅ token
         localStorage.setItem(TOKEN_KEY, res.access_token);
-
-        // ✅ avoid mixing business selection between users
         localStorage.removeItem("current_business_id");
 
-        // ✅ if must change password => don't force /me if you want strict flow
         const mustChangePassword = !!res.mustChangePassword;
 
         if (mustChangePassword) {
           const loginUser: User = {
             ...(res.user as User),
             mustChangePassword: true,
+            permissions: normalizePermissions(res?.user?.permissions),
           };
 
-          setUser(loginUser);
-          localStorage.setItem(USER_KEY, JSON.stringify(loginUser));
-
+          persistUser(loginUser);
           window.dispatchEvent(new Event("auth-changed"));
           return { user: loginUser, mustChangePassword: true };
         }
 
-        // ✅ normal flow: get real user/role from /me
         const me = await syncMe();
         window.dispatchEvent(new Event("auth-changed"));
         return { user: me, mustChangePassword: false };
@@ -144,24 +216,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
 
       changePasswordFirst: async (newPassword) => {
-        // backend returns: { ok, access_token, user }
         const res: any = await AuthApi.changePasswordFirst(newPassword);
 
-        // update token + user
         if (res?.access_token) {
           localStorage.setItem(TOKEN_KEY, res.access_token);
         }
 
-        // after change, mustChangePassword false
-        const updatedUser: User = {
-          ...(res.user as User),
-          mustChangePassword: false,
-        };
+        const me = await syncMe();
+        const updatedUser: User = { ...me, mustChangePassword: false };
 
-        setUser(updatedUser);
-        localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
-
-        // reset business selection (safe)
+        persistUser(updatedUser);
         localStorage.removeItem("current_business_id");
 
         window.dispatchEvent(new Event("auth-changed"));
@@ -172,13 +236,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
         localStorage.removeItem("current_business_id");
-        setUser(null);
-
+        persistUser(null);
         window.dispatchEvent(new Event("auth-changed"));
       },
-    }),
-    [user, isReady]
-  );
+    };
+  }, [user, isReady]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

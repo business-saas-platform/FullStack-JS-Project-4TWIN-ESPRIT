@@ -20,15 +20,22 @@ import { AIAssistant } from "../organisms/AIAssistant";
 import { useBusinessContext } from "@/shared/contexts/BusinessContext";
 import { useAuth } from "@/shared/contexts/AuthContext";
 
-const navigation = [
+type NavItem = {
+  name: string;
+  href: string;
+  icon: any;
+  perm?: string; // ✅ permission required to see this menu item
+};
+
+const navigation: NavItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "AI Insights", href: "/dashboard/ai-insights", icon: Sparkles },
-  { name: "Invoices", href: "/dashboard/invoices", icon: FileText },
-  { name: "Expenses", href: "/dashboard/expenses", icon: Receipt },
-  { name: "Clients", href: "/dashboard/clients", icon: Users },
-  { name: "Team", href: "/dashboard/team", icon: UsersRound },
-  { name: "Reports", href: "/dashboard/reports", icon: BarChart3 },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  { name: "AI Insights", href: "/dashboard/ai-insights", icon: Sparkles, perm: "ai.read" },
+  { name: "Invoices", href: "/dashboard/invoices", icon: FileText, perm: "invoices.read" },
+  { name: "Expenses", href: "/dashboard/expenses", icon: Receipt, perm: "expenses.read" },
+  { name: "Clients", href: "/dashboard/clients", icon: Users, perm: "clients.read" },
+  { name: "Team", href: "/dashboard/team", icon: UsersRound, perm: "team.read" },
+  { name: "Reports", href: "/dashboard/reports", icon: BarChart3, perm: "reports.read" },
+  { name: "Settings", href: "/dashboard/settings", icon: Settings, perm: "settings.read" },
 ];
 
 function initials(name?: string) {
@@ -47,7 +54,7 @@ export function DashboardLayout() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const { currentBusiness, setCurrentBusiness, businesses, isReady } = useBusinessContext();
-  const { user, logout, isReady: authReady } = useAuth();
+  const { user, logout, isReady: authReady, hasPermission } = useAuth();
 
   const isOnSetupPage = location.pathname.startsWith("/dashboard/company/setup");
 
@@ -63,7 +70,6 @@ export function DashboardLayout() {
 
   const handleBusinessChange = (business: (typeof businesses)[0]) => {
     setCurrentBusiness(business);
-    // make sure business id persists (BusinessContext already does it, but safe)
     if ((business as any)?.id) {
       localStorage.setItem("current_business_id", String((business as any).id));
       window.dispatchEvent(new Event("business-changed"));
@@ -75,21 +81,25 @@ export function DashboardLayout() {
     setUserMenuOpen(false);
   }, [location.pathname]);
 
+  // ✅ Filter menu by permissions (owner/admin sees all)
+  const filteredNavigation = useMemo(() => {
+    if (!user) return [];
+    if (user.role === "platform_admin" || user.role === "business_owner") return navigation;
+
+    return navigation.filter((item) => !item.perm || hasPermission(item.perm));
+  }, [user, hasPermission]);
+
   // ✅ HARD FIX: redirect to setup ONLY when needed (no loop)
   useEffect(() => {
-    // wait until auth + business context are ready
     if (!authReady || !isReady) return;
 
-    // only owners must complete company profile (adjust if needed)
     const isOwner = user?.role === "business_owner";
 
-    // If no current business selected, but there are businesses => select first
     if (!currentBusiness && businesses.length > 0) {
       handleBusinessChange(businesses[0]);
       return;
     }
 
-    // If profile incomplete -> force setup (but don't loop)
     const incomplete = (currentBusiness as any)?.isProfileComplete === false;
 
     if (isOwner && incomplete && !isOnSetupPage) {
@@ -97,7 +107,6 @@ export function DashboardLayout() {
       return;
     }
 
-    // If profile complete and you are on setup page -> go dashboard
     if (isOwner && !incomplete && isOnSetupPage) {
       navigate("/dashboard", { replace: true });
     }
@@ -111,6 +120,24 @@ export function DashboardLayout() {
     navigate,
   ]);
 
+  // ✅ Route guard (if user tries to open URL without permission => redirect)
+  useEffect(() => {
+    if (!authReady) return;
+    if (!user) return;
+
+    if (user.role === "platform_admin" || user.role === "business_owner") return;
+
+    // find matching nav item for current path
+    const currentNav = navigation.find(
+      (n) => location.pathname === n.href || location.pathname.startsWith(n.href + "/")
+    );
+
+    // If this route requires permission and user doesn't have it => redirect
+    if (currentNav?.perm && !hasPermission(currentNav.perm)) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [authReady, user, location.pathname, hasPermission, navigate]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar */}
@@ -122,7 +149,6 @@ export function DashboardLayout() {
           />
           <div className="fixed inset-y-0 left-0 w-64 bg-white">
             <div className="flex h-16 items-center justify-between px-4 border-b">
-              {/* ✅ Company name instead of Operia */}
               <span className="text-xl font-bold truncate">{brandTitle}</span>
               <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
                 <X className="h-5 w-5" />
@@ -138,7 +164,7 @@ export function DashboardLayout() {
             </div>
 
             <nav className="flex-1 space-y-1 px-2 py-2">
-              {navigation.map((item) => {
+              {filteredNavigation.map((item) => {
                 const isActive =
                   location.pathname === item.href ||
                   location.pathname.startsWith(item.href + "/");
@@ -166,7 +192,6 @@ export function DashboardLayout() {
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex flex-col flex-grow border-r border-gray-200 bg-white">
           <div className="flex h-16 items-center px-4 border-b">
-            {/* ✅ Company name instead of Operia */}
             <span className="text-xl font-bold truncate">{brandTitle}</span>
           </div>
 
@@ -179,7 +204,7 @@ export function DashboardLayout() {
           </div>
 
           <nav className="flex-1 space-y-1 px-2 py-2">
-            {navigation.map((item) => {
+            {filteredNavigation.map((item) => {
               const isActive =
                 location.pathname === item.href ||
                 location.pathname.startsWith(item.href + "/");
@@ -248,6 +273,10 @@ export function DashboardLayout() {
                         {user?.name ?? "User"}
                       </div>
                       <div className="text-xs text-gray-500">{user?.email ?? ""}</div>
+                      {/* ✅ show role */}
+                      <div className="mt-1 text-[11px] text-gray-500">
+                        Role: <span className="font-medium">{user?.role ?? "-"}</span>
+                      </div>
                     </div>
 
                     <button

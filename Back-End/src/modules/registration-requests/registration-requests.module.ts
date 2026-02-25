@@ -10,6 +10,8 @@ import { BusinessEntity } from "../businesses/entities/business.entity";
 import { TeamMemberEntity } from "../team-members/entities/team-member.entity";
 
 import { MailModule } from "../mail/mail.module";
+import { AuthModule } from "../auth/auth.module";
+import { PlatformAdminDbGuard } from "src/common/guards/platform-admin-db.guard";
 
 @Module({
   imports: [
@@ -20,8 +22,9 @@ import { MailModule } from "../mail/mail.module";
       TeamMemberEntity,
     ]),
     MailModule,
+    AuthModule, // ✅ add
   ],
   controllers: [RegistrationRequestsController],
-  providers: [RegistrationRequestsService],
+  providers: [RegistrationRequestsService,PlatformAdminDbGuard],
 })
 export class RegistrationRequestsModule {}

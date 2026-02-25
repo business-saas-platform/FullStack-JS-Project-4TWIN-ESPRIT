@@ -18,6 +18,7 @@ const registration_requests_service_1 = require("./registration-requests.service
 const create_registration_request_dto_1 = require("./dto/create-registration-request.dto");
 const review_request_dto_1 = require("./dto/review-request.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const platform_admin_db_guard_1 = require("../../common/guards/platform-admin-db.guard");
 let RegistrationRequestsController = class RegistrationRequestsController {
     constructor(service) {
         this.service = service;
@@ -25,7 +26,7 @@ let RegistrationRequestsController = class RegistrationRequestsController {
     create(dto) {
         return this.service.create(dto);
     }
-    list(req, status) {
+    list(status) {
         return this.service.list(status ?? "pending");
     }
     approve(id, req, dto) {
@@ -44,16 +45,15 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], RegistrationRequestsController.prototype, "create", null);
 __decorate([
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, platform_admin_db_guard_1.PlatformAdminDbGuard),
     (0, common_1.Get)(),
-    __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Query)("status")),
+    __param(0, (0, common_1.Query)("status")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], RegistrationRequestsController.prototype, "list", null);
 __decorate([
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, platform_admin_db_guard_1.PlatformAdminDbGuard),
     (0, common_1.Post)(":id/approve"),
     __param(0, (0, common_1.Param)("id")),
     __param(1, (0, common_1.Req)()),
@@ -63,7 +63,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], RegistrationRequestsController.prototype, "approve", null);
 __decorate([
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, platform_admin_db_guard_1.PlatformAdminDbGuard),
     (0, common_1.Post)(":id/reject"),
     __param(0, (0, common_1.Param)("id")),
     __param(1, (0, common_1.Req)()),

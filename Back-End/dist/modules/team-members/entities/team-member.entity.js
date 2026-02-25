@@ -24,27 +24,20 @@ __decorate([
     __metadata("design:type", String)
 ], TeamMemberEntity.prototype, "businessId", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
-], TeamMemberEntity.prototype, "name", void 0);
-__decorate([
+    (0, typeorm_1.Index)(),
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)
 ], TeamMemberEntity.prototype, "email", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "enum", enum: ["business_owner", "business_admin", "accountant", "team_member"] }),
+    (0, typeorm_1.Column)(),
+    __metadata("design:type", String)
+], TeamMemberEntity.prototype, "name", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "enum", enum: ["business_admin", "accountant", "team_member"] }),
     __metadata("design:type", String)
 ], TeamMemberEntity.prototype, "role", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", String)
-], TeamMemberEntity.prototype, "avatar", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", String)
-], TeamMemberEntity.prototype, "phone", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: "enum", enum: ["active", "inactive", "invited"], default: "active" }),
+    (0, typeorm_1.Column)({ type: "enum", enum: ["invited", "active", "disabled"], default: "invited" }),
     __metadata("design:type", String)
 ], TeamMemberEntity.prototype, "status", void 0);
 __decorate([
@@ -52,13 +45,9 @@ __decorate([
     __metadata("design:type", Array)
 ], TeamMemberEntity.prototype, "permissions", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
+    (0, typeorm_1.Column)({ type: "timestamptz", nullable: true }),
+    __metadata("design:type", Object)
 ], TeamMemberEntity.prototype, "joinedAt", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", String)
-], TeamMemberEntity.prototype, "lastActive", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

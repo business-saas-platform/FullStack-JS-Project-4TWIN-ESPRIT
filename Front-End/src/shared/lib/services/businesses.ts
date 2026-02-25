@@ -1,43 +1,69 @@
+
 import type { Business } from "@/shared/lib/mockData";
 import { api } from "@/shared/lib/apiClient";
 
 export const BusinessesApi = {
-  // Backend currently: GET /businesses (owner businesses)
+  // ✅ GET /businesses (owner businesses)
   listMine: () => api<Business[]>("/businesses"),
 
+  // ✅ GET /businesses/:id
   getById: (id: string) => api<Business>(`/businesses/${id}`),
 
+  // ✅ POST /businesses
   create: (payload: Partial<Business>) =>
     api<Business>("/businesses", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
+  // ✅ PATCH /businesses/:id
   update: (id: string, payload: Partial<Business>) =>
     api<Business>(`/businesses/${id}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
     }),
 
+  // ✅ DELETE /businesses/:id
   remove: (id: string) =>
     api<{ ok?: boolean; deleted?: boolean; id?: string }>(`/businesses/${id}`, {
       method: "DELETE",
     }),
 
-  // ✅ ONLY UPDATED: added tax fields to payload typing
+  // ✅ POST /businesses/:id/logo (multipart/form-data)
+  // IMPORTANT: DO NOT set Content-Type manually when sending FormData
+  uploadLogo: async (businessId: string, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+
+    return api<{ businessId: string; logoUrl: string }>(
+      `/businesses/${businessId}/logo`,
+      {
+        method: "POST",
+        body: fd as any, // because api() typed body as string sometimes
+      }
+    );
+  },
+
+  // ✅ PATCH /businesses/:id/profile
   completeProfile: (
     id: string,
     payload: {
-      logoUrl?: string;
-      taxId?: string;
+      name?: string;
+      type?: string;
       address?: string;
+      city?: string;
+      country?: string;
+      taxId?: string;
       phone?: string;
-
-      // ✅ tax fields
+      email?: string;
+      website?: string;
       currency?: string;
-      fiscalYearStart?: string; // "YYYY-MM-DD"
-      taxRate?: number;         // e.g. 19
+      fiscalYearStart?: string; // YYYY-MM-DD
+      industry?: string;
+      taxRate?: number; // 0..100
+      logoUrl?: string;
       registrationNumber?: string;
+      isProfileComplete?: boolean;
     }
   ) =>
     api<Business>(`/businesses/${id}/profile`, {

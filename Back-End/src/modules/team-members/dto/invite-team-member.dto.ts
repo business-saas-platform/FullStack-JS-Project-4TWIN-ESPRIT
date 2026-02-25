@@ -1,19 +1,40 @@
-import { IsArray, IsEmail, IsEnum, IsString, IsUUID } from "class-validator";
+import {
+  ArrayUnique,
+  IsArray,
+  IsEmail,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from "class-validator";
+
+export type TeamRole = "business_admin" | "accountant" | "team_member";
 
 export class InviteTeamMemberDto {
   @IsUUID()
   businessId!: string;
 
+  @IsNotEmpty()
   @IsString()
   name!: string;
 
+  @IsNotEmpty()
   @IsEmail()
   email!: string;
 
-@IsEnum(["business_owner","business_admin","accountant","team_member"])
-role!: "business_owner" | "business_admin" | "accountant" | "team_member";
+  @IsIn(["business_admin", "accountant", "team_member"])
+  role!: TeamRole;
+  @IsOptional()
+@IsString()
+status?: string;
 
+@IsOptional()
+@IsString()
+joinedAt?: string;
 
+  @IsOptional()
   @IsArray()
-  permissions!: string[];
+  @ArrayUnique()
+  permissions?: string[];
 }

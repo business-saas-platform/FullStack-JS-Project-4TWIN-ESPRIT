@@ -131,11 +131,17 @@ export function Login() {
 
       toast.success("Login successful!");
 
-      const from = state?.from;
-      const fromPath = typeof from === "string" ? from : from?.pathname;
+   const from = state?.from;
+const fromPath = typeof from === "string" ? from : from?.pathname;
 
-      const target = fromPath || redirectByRole(user.role as Role);
-      navigate(target, { replace: true });
+// ✅ FORCE admin to /admin (ignore "from")
+if (user.role === "platform_admin") {
+  navigate("/admin", { replace: true });
+  return;
+}
+
+const target = fromPath || "/dashboard";
+navigate(target, { replace: true });
     } catch (err: any) {
       const msg = getErrorMessage(err);
 
