@@ -14,8 +14,22 @@ export function ProtectedRoute({ roles, children }: Props) {
   if (!isReady) return null;
 
   if (!user) {
-    // keep full location (pathname + search)
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
+  }
+
+  // ── Force password change on first login ──
+  if (user.mustChangePassword && location.pathname !== "/auth/change-password") {
+    return <Navigate to="/auth/change-password" replace />;
+  }
+
+  // ── Force security questions setup after password change ──
+  if (
+    !user.mustChangePassword &&
+    !(user as any).hasSecurityQuestions &&
+    location.pathname !== "/auth/setup-security-questions"
+  ) {
+    // only redirect if we know they haven't set up questions yet
+    // we'll handle this check in the setup page itself
   }
 
   if (roles && roles.length > 0 && !roles.includes(user.role)) {

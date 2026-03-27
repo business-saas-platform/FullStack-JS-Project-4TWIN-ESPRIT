@@ -265,6 +265,23 @@ let AuthService = class AuthService {
     isStrongPassword(pw) {
         return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(pw);
     }
+    async changePassword(userId, currentPassword, newPassword) {
+        const user = await this.users.findOne({ where: { id: userId } });
+        if (!user)
+            throw new common_1.UnauthorizedException();
+        if (!user.passwordHash)
+            throw new common_1.BadRequestException("No password set. Use OAuth login.");
+        const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+        if (!ok)
+            throw new common_1.UnauthorizedException("Current password is incorrect.");
+        if (!this.isStrongPassword(newPassword)) {
+            throw new common_1.BadRequestException("Weak password (need 1 uppercase, 1 lowercase, 1 number, min 8)");
+        }
+        user.passwordHash = await bcrypt.hash(newPassword, 10);
+        user.mustChangePassword = false;
+        await this.users.save(user);
+        return { ok: true, message: "Password changed successfully." };
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([

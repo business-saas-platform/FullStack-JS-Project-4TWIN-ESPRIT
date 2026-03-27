@@ -34,7 +34,8 @@ export class UserEntity {
   @Index()
   @Column({ type: "uuid", nullable: true })
   businessId?: string;
-
+@Column({ default: "active" })
+status!: string;
   // ✅ NEW
   @Column({ type: "text", array: true, default: () => "ARRAY[]::text[]" })
   permissions!: string[];
@@ -47,6 +48,14 @@ export class UserEntity {
 
   @Column({ type: "timestamptz", nullable: true })
   lockedUntil!: Date | null;
+
+  //@CreateDateColumn()
+  //createdAt!: Date;
+  // ────────────────────────────────────────────────
+  //        security questions
+  // ────────────────────────────────────────────────
+  //@Column({ type: "jsonb", nullable: true, default: null })
+  //securityQuestions!: { question: string; answerHash: string }[] | null;
 
   @CreateDateColumn()
   createdAt!: Date;

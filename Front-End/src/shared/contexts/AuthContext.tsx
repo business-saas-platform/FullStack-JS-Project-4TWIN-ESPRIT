@@ -196,14 +196,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
 
       register: async (payload) => {
-        const res: any = await AuthApi.register(payload);
-        localStorage.setItem(TOKEN_KEY, res.access_token);
-        localStorage.removeItem("current_business_id");
+  const res: any = await AuthApi.register(payload as any); // ← add as any
+  localStorage.setItem(TOKEN_KEY, res.access_token);
+  localStorage.removeItem("current_business_id");
 
-        const me = await syncMe();
-        window.dispatchEvent(new Event("auth-changed"));
-        return me;
-      },
+  const me = await syncMe();
+  window.dispatchEvent(new Event("auth-changed"));
+  return me;
+},
 
       acceptInvite: async (payload) => {
         const res: any = await AuthApi.acceptInvite(payload as any);

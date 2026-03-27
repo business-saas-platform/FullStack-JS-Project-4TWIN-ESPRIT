@@ -1,18 +1,18 @@
 import React, { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { Button } from "@/app/components/ui/button";
-import { Input } from "@/app/components/ui/input";
-import { Label } from "@/app/components/ui/label";
+import { Button } from "../../../app/components/ui/button";
+import { Input } from "../../../app/components/ui/input";
+import { Label } from "../../../app/components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/app/components/ui/card";
+} from "../../../app/components/ui/card";
 import { toast } from "sonner";
 
-import { useAuth } from "@/shared/contexts/AuthContext";
+import { useAuth } from "../../../shared/contexts/AuthContext";
 
 type Role =
   | "platform_admin"
@@ -56,14 +56,14 @@ export function Login() {
       setLoading(true);
 
       // ✅ this will set token + call /me + update context
-      const user = await login(cleanEmail, password);
+      const result  = await login(cleanEmail, password);
 
       toast.success("Login successful!");
 
       const from = state?.from;
       const fromPath = typeof from === "string" ? from : from?.pathname;
 
-      const target = fromPath || redirectByRole(user.role as Role);
+      const target = fromPath || redirectByRole(result.user.role as Role);
       navigate(target, { replace: true });
     } catch (err: any) {
       toast.error("Login failed", {

@@ -56,6 +56,9 @@ let AuthController = class AuthController {
             "http://localhost:5173";
         return res.redirect(`${front}/auth/oauth-callback?token=${access_token}`);
     }
+    changePassword(req, dto) {
+        return this.authService.changePassword(req.user.sub, dto.currentPassword, dto.newPassword);
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -128,6 +131,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "githubCallback", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)("change-password"),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "changePassword", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)("auth"),
     __metadata("design:paramtypes", [auth_service_1.AuthService,

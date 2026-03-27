@@ -1,18 +1,18 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Button } from "@/app/components/ui/button";
-import { Input } from "@/app/components/ui/input";
-import { Label } from "@/app/components/ui/label";
+import { Button } from "../../../app/components/ui/button";
+import { Input } from "../../../app/components/ui/input";
+import { Label } from "../../../app/components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/app/components/ui/card";
+} from "../../../app/components/ui/card";
 import { toast } from "sonner";
 
-import { RegistrationRequestsApi } from "@/shared/lib/services/registrationRequests";
+import { RegistrationRequestsApi } from "../../../shared/lib/services/registrationRequests";
 
 export function Register() {
   const navigate = useNavigate();

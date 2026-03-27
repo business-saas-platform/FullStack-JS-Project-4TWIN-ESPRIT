@@ -82,4 +82,12 @@ changePasswordFirst(@Req() req: any, @Body() dto: ChangePasswordDto) {
 
     return res.redirect(`${front}/auth/oauth-callback?token=${access_token}`);
   }
+  // =========================
+  // CHANGE PASS SETTINGS
+  // =========================
+   @UseGuards(JwtAuthGuard)
+ @Post("change-password")
+ changePassword(@Req() req: any, @Body() dto: { currentPassword: string; newPassword: string }) {
+   return this.authService.changePassword(req.user.sub, dto.currentPassword, dto.newPassword);
+ }
 }

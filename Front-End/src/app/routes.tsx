@@ -7,7 +7,7 @@ import { RequireCompanySetup } from "@/shared/components/RequireCompanySetup";
 
 // Front-office
 import { LandingPage } from "@/front-office/pages/LandingPage";
-
+import { MockPaymentPage } from "@/front-office/pages/MockPaymentPage";
 // Layouts
 import { AuthLayout } from "@/back-office/templates/AuthLayout";
 import { DashboardLayout } from "@/back-office/templates/DashboardLayout";
@@ -20,7 +20,7 @@ import { ForgotPassword } from "@/back-office/pages/auth/ForgotPassword";
 import AcceptInvite from "@/app/pages/auth/AcceptInvite";
 import OAuthSuccess from "@/app/pages/auth/OAuthSuccess";
 import ForceChangePassword from "@/app/pages/auth/ForceChangePassword";
-
+import { SecurityQuestionsSetup } from "@/back-office/pages/auth/SecurityQuestionsSetup";
 // OAuth Callback
 import OAuthCallback from "@/app/pages/auth/OAuthCallback";
 
@@ -55,6 +55,8 @@ import { AIInsights } from "@/app/pages/ai/AIInsights";
 // Company setup page
 import CompanySetup from "@/app/pages/businesses/CompanySetup";
 
+
+
 export const router = createBrowserRouter([
   // PUBLIC
   { path: "/", element: <LandingPage /> },
@@ -75,9 +77,33 @@ export const router = createBrowserRouter([
       { path: "force-change-password", element: <ForceChangePassword /> },
       { path: "forgot-password", element: <ForgotPassword /> },
       { path: "accept-invite", element: <AcceptInvite /> },
-    ],
-  },
-
+       // ── ADD THIS ──
+    {
+      path: "setup-security-questions",
+      element: (
+        <SecurityQuestionsSetup
+          token={localStorage.getItem("access_token") ?? ""}
+          onComplete={async () => {
+            // After questions saved → go to company setup
+            const { BusinessesApi } = await import("@/shared/lib/services/businesses");
+            const list: any[] = await BusinessesApi.listMine();
+            if (!list || list.length === 0) {
+              window.location.href = "/dashboard";
+              return;
+            }
+            const business = list[list.length - 1];
+            localStorage.setItem("current_business_id", String(business.id));
+            localStorage.setItem("pending_setup_business_id", String(business.id));
+            window.dispatchEvent(new Event("business-changed"));
+            window.location.href = "/dashboard/company/setup";
+          }}
+        />
+      ),
+    },
+  ],
+},
+    
+{ path: "/mock-payment/:id", element: <MockPaymentPage /> },
   // PLATFORM ADMIN
   {
     path: "/admin",
@@ -252,15 +278,15 @@ export const router = createBrowserRouter([
 
       // SETTINGS
       {
-        path: "settings",
-        element: (
-          <RequireCompanySetup>
-            <RequirePermission permission="settings:read">
-              <Settings />
-            </RequirePermission>
-          </RequireCompanySetup>
-        ),
-      },
+  path: "settings",
+  element: (
+    <RequireCompanySetup>
+      <RequirePermission permission="settings:read">
+        <Settings />
+      </RequirePermission>
+    </RequireCompanySetup>
+  ),
+},
     ],
   },
 ]);

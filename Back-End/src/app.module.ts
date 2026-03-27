@@ -15,6 +15,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { MailModule } from "./modules/mail/mail.module";
 import { RegistrationRequestsModule } from "./modules/registration-requests/registration-requests.module";
 import { TenantModule } from "./common/tenant/tenant.module";
+import { SecurityQuestionsModule } from "./modules/security-questions/security-questions.module";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -29,7 +30,8 @@ import { TenantModule } from "./common/tenant/tenant.module";
     TeamMembersModule,
     AIInsightsModule,
     RegistrationRequestsModule,
-    AuthModule
+    AuthModule,
+    SecurityQuestionsModule
   ],
 })
 export class AppModule implements NestModule {
