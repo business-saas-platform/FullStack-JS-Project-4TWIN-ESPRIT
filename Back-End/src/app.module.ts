@@ -3,6 +3,7 @@ import { TenantMiddleware } from "./common/middleware/tenant.middleware";
 import { ConfigModule } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { typeOrmConfig } from "./config/typeorm.config";
+import { CommunicationModule } from './modules/communication/communication.module';
 
 import { BusinessesModule } from "./modules/businesses/businesses.module";
 import { UsersModule } from "./modules/users/users.module";
@@ -24,6 +25,8 @@ import { SecurityQuestionsModule } from "./modules/security-questions/security-q
     UsersModule,
     ClientsModule,
     InvoicesModule,
+    CommunicationModule,
+
     TenantModule,
     MailModule,
     ExpensesModule,
