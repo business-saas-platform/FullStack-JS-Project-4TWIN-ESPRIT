@@ -4,6 +4,8 @@ import { createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { RequireCompanySetup } from "@/shared/components/RequireCompanySetup";
+//communication
+import { Communication } from '@/back-office/pages/communication/Communication';
 
 // Front-office
 import { LandingPage } from "@/front-office/pages/LandingPage";
@@ -142,6 +144,7 @@ export const router = createBrowserRouter([
     children: [
       // ✅ Company setup must be accessible even if profile incomplete
       { path: "company/setup", element: <CompanySetup /> },
+      { path: 'communication', element: <Communication /> },
 
       // ✅ Everything else requires company setup
       {

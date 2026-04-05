@@ -1,4 +1,6 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+
+import { MessageSquare } from 'lucide-react'; // add to existing lucide import
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   LayoutDashboard,
@@ -33,6 +35,8 @@ type NavItem = {
 };
 
 const navigation: NavItem[] = [
+  { name: 'Communication', href: '/dashboard/communication', icon: MessageSquare, perm: 'team.read' },
+
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "AI Insights", href: "/dashboard/ai-insights", icon: Sparkles, perm: "ai.read", badge: "AI" },
   { name: "Invoices", href: "/dashboard/invoices", icon: FileText, perm: "invoices.read" },
