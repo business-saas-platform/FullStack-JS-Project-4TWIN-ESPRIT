@@ -13,6 +13,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import html2canvas from "html2canvas-pro";
+import { jsPDF } from "jspdf";
 
 import { useBusinessContext } from "@/shared/contexts/BusinessContext";
 import { InvoicesApi, type Invoice } from "@/shared/lib/services/invoices";
@@ -205,9 +207,46 @@ export function ViewInvoice() {
 
   const handleDownload = async () => {
     try {
-      toast.info("PDF generation not implemented yet");
+      const element = document.getElementById("invoice-printable-area");
+      if (!element) {
+        toast.error("Invoice content not found!");
+        return;
+      }
+      
+      toast.info("Generating PDF, please wait...");
+      
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL("image/jpeg", 0.98);
+      
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "in",
+        format: "letter"
+      });
+      
+      const margin = 0.5;
+      const pdfWidth = pdf.internal.pageSize.getWidth() - (margin * 2);
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      let heightLeft = pdfHeight;
+      let position = margin;
+      
+      pdf.addImage(imgData, "JPEG", margin, position, pdfWidth, pdfHeight);
+      heightLeft -= (pageHeight - margin * 2);
+      
+      while (heightLeft >= 0) {
+        position -= (pageHeight - margin * 2);
+        pdf.addPage();
+        pdf.addImage(imgData, "JPEG", margin, position, pdfWidth, pdfHeight);
+        heightLeft -= (pageHeight - margin * 2);
+      }
+
+      pdf.save(`Invoice-${invoice?.invoiceNumber || "download"}.pdf`);
+      toast.success("PDF downloaded successfully!");
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to download invoice");
+      console.error("PDF Generation Error:", e);
     }
   };
 
@@ -350,7 +389,7 @@ export function ViewInvoice() {
       </div>
 
       {/* Printable invoice */}
-      <Card className="border-gray-200 print:border-0 print:shadow-none">
+      <Card id="invoice-printable-area" className="border-gray-200 print:border-0 print:shadow-none">
         <CardContent className="p-6 md:p-10 print:p-0">
           {/* Top section */}
           <div className="flex flex-col gap-8 border-b pb-8 md:flex-row md:items-start md:justify-between">

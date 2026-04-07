@@ -1,26 +1,43 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+
+import { MessageSquare } from 'lucide-react'; // add to existing lucide import
 import { useEffect, useMemo, useRef, useState } from "react";
-// CORRECTION : Utilisation de l'import nommé pour éviter l'erreur SyntaxError
-import { ChatWidget } from '../../shared/components/support/ChatWidget';
 import {
-  LayoutDashboard, FileText, Receipt, Users, UsersRound,
-  BarChart3, Settings, Menu, X, LogOut, Sparkles,
-  Building2, PanelLeftClose, PanelLeftOpen, LucideIcon
+  LayoutDashboard,
+  FileText,
+  Receipt,
+  Users,
+  UsersRound,
+  BarChart3,
+  Settings,
+  Menu,
+  X,
+  LogOut,
+  Sparkles,
+  ChevronRight,
+  Building2,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 import { Button, Avatar, AvatarFallback } from "@/shared/ui";
+import { BusinessSwitcher } from "../molecules/BusinessSwitcher";
+import { AIAssistant } from "../organisms/AIAssistant";
+import ChatWidget from "@/shared/components/ChatWidget";
 import { useBusinessContext } from "@/shared/contexts/BusinessContext";
 import { useAuth } from "@/shared/contexts/AuthContext";
 
 type NavItem = {
   name: string;
   href: string;
-  icon: LucideIcon;
+  icon: any;
   perm?: string;
   badge?: string;
 };
 
 const navigation: NavItem[] = [
+  { name: 'Communication', href: '/dashboard/communication', icon: MessageSquare, perm: 'team.read' },
+
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "AI Insights", href: "/dashboard/ai-insights", icon: Sparkles, perm: "ai.read", badge: "AI" },
   { name: "Invoices", href: "/dashboard/invoices", icon: FileText, perm: "invoices.read" },
@@ -31,10 +48,20 @@ const navigation: NavItem[] = [
   { name: "Settings", href: "/dashboard/settings", icon: Settings, perm: "settings.read" },
 ];
 
-const getInitials = (name?: string) => {
+function initials(name?: string) {
   if (!name) return "U";
-  return name.trim().split(/\s+/).map(n => n[0]).join("").toUpperCase().slice(0, 2);
-};
+  const parts = name.trim().split(/\s+/);
+  const a = parts[0]?.[0] ?? "U";
+  const b = parts[1]?.[0] ?? "";
+  return (a + b).toUpperCase();
+}
+
+function getPageTitle(pathname: string) {
+  const match = navigation.find(
+    (item) => pathname === item.href || pathname.startsWith(item.href + "/")
+  );
+  return match?.name || "Dashboard";
+}
 
 export function DashboardLayout() {
   const navigate = useNavigate();
@@ -45,25 +72,16 @@ export function DashboardLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  const { currentBusiness, isReady } = useBusinessContext();
+  const { currentBusiness, setCurrentBusiness, businesses, isReady } = useBusinessContext();
   const { user, logout, isReady: authReady, hasPermission } = useAuth();
 
-  // --- DONNÉES IA (MOCK) ---
-  const mockAiInsights = useMemo(() => [
-    { 
-      title: "Prévision de Revenus", 
-      description: "Tes revenus devraient augmenter de 23% le mois prochain selon l'analyse prédictive.", 
-      type: 'revenue'
-    },
-    { 
-      title: "Alerte Trésorerie", 
-      description: "Attention, 3 factures importantes sont en retard de paiement.", 
-      type: 'cashflow'
-    }
-  ], []);
+  const isOnSetupPage = location.pathname.startsWith("/dashboard/company/setup");
 
-  const brandTitle = (currentBusiness as any)?.name || "BizManager";
-  const pageTitle = navigation.find(n => location.pathname.startsWith(n.href))?.name || "Dashboard";
+  const brandTitle = useMemo(() => {
+    return (currentBusiness as any)?.name || "BizManager";
+  }, [currentBusiness]);
+
+  const pageTitle = useMemo(() => getPageTitle(location.pathname), [location.pathname]);
 
   const filteredNavigation = useMemo(() => {
     if (!user) return [];
@@ -76,145 +94,383 @@ export function DashboardLayout() {
     navigate("/auth/login", { replace: true });
   };
 
-  // Fermeture du menu au clic extérieur
+  const handleBusinessChange = (business: (typeof businesses)[0]) => {
+    setCurrentBusiness(business);
+    if ((business as any)?.id) {
+      localStorage.setItem("current_business_id", String((business as any).id));
+      window.dispatchEvent(new Event("business-changed"));
+    }
+  };
+
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
+    setUserMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false);
       }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
+    }
 
-  if (!authReady || !isReady) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50">
-        <div className="h-12 w-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-medium italic">Préparation de votre espace...</p>
-      </div>
+    if (userMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [userMenuOpen]);
+
+  useEffect(() => {
+    if (!authReady || !isReady) return;
+
+    const isOwner = user?.role === "business_owner";
+
+    if (!currentBusiness && businesses.length > 0) {
+      handleBusinessChange(businesses[0]);
+      return;
+    }
+
+    const incomplete = (currentBusiness as any)?.isProfileComplete === false;
+
+    if (isOwner && incomplete && !isOnSetupPage) {
+      navigate("/dashboard/company/setup", { replace: true });
+      return;
+    }
+
+    if (isOwner && !incomplete && isOnSetupPage) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [
+    authReady,
+    isReady,
+    user?.role,
+    currentBusiness,
+    businesses,
+    isOnSetupPage,
+    navigate,
+  ]);
+
+  useEffect(() => {
+    if (!authReady || !user) return;
+    if (user.role === "platform_admin" || user.role === "business_owner") return;
+
+    const currentNav = navigation.find(
+      (n) => location.pathname === n.href || location.pathname.startsWith(n.href + "/")
     );
-  }
+
+    if (currentNav?.perm && !hasPermission(currentNav.perm)) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [authReady, user, location.pathname, hasPermission, navigate]);
+
+  const desktopSidebarWidth = sidebarCollapsed ? "lg:pl-24" : "lg:pl-72";
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex">
-      
-      {/* Sidebar Desktop */}
-      <aside className={`fixed inset-y-0 left-0 z-40 bg-white border-r border-slate-200 transition-all duration-300 
-        ${sidebarCollapsed ? "w-24" : "w-72"} hidden lg:flex flex-col shadow-sm`}>
-        
-        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-lg">
-              <Building2 size={20} />
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      {/* Mobile Sidebar */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <div className="fixed inset-y-0 left-0 w-[88%] max-w-[320px] overflow-y-auto border-r border-slate-200 bg-white shadow-2xl">
+            <div className="flex h-20 items-center justify-between border-b border-slate-200 px-5">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-md">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-base font-bold text-slate-900">{brandTitle}</p>
+                  <p className="text-xs text-slate-500">Business Workspace</p>
+                </div>
+              </div>
+
+              <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)} className="rounded-xl">
+                <X className="h-5 w-5" />
+              </Button>
             </div>
-            {!sidebarCollapsed && <span className="font-bold text-lg truncate text-slate-800">{brandTitle}</span>}
+
+            <div className="border-b border-slate-100 px-4 py-4">
+              <BusinessSwitcher
+                businesses={businesses}
+                currentBusiness={currentBusiness}
+                onBusinessChange={handleBusinessChange}
+              />
+            </div>
+
+            <nav className="space-y-2 px-3 py-4">
+              {filteredNavigation.map((item) => {
+                const isActive =
+                  location.pathname === item.href ||
+                  location.pathname.startsWith(item.href + "/");
+
+                return (
+                  <button
+                    key={item.name}
+                    onClick={() => {
+                      navigate(item.href);
+                      setSidebarOpen(false);
+                    }}
+                    className={[
+                      "group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all",
+                      isActive
+                        ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                    ].join(" ")}
+                  >
+                    <item.icon className="h-5 w-5 shrink-0" />
+                    <span className="flex-1 font-medium">{item.name}</span>
+                    {item.badge && (
+                      <span
+                        className={[
+                          "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                          isActive ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-700",
+                        ].join(" ")}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+
+            <div className="border-t border-slate-100 p-4">
+              <button
+                onClick={handleLogout}
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-red-600 transition hover:bg-red-50"
+              >
+                <LogOut className="h-5 w-5" />
+                <span className="font-medium">Logout</span>
+              </button>
+            </div>
           </div>
         </div>
+      )}
 
-        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-          {filteredNavigation.map((item) => {
-            const isActive = location.pathname === item.href;
-            return (
-              <button
-                key={item.name}
-                onClick={() => navigate(item.href)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group
-                  ${isActive ? "bg-indigo-600 text-white shadow-md shadow-indigo-200" : "text-slate-500 hover:bg-slate-50 hover:text-indigo-600"}`}
-              >
-                <item.icon size={22} className={isActive ? "text-white" : "group-hover:text-indigo-600"} />
-                {!sidebarCollapsed && <span className="font-medium text-sm">{item.name}</span>}
-                {!sidebarCollapsed && item.badge && (
-                  <span className="ml-auto text-[10px] bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-bold uppercase">
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
+      {/* Desktop Sidebar */}
+      <aside
+        className={[
+          "hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col border-r border-slate-200 bg-white/95 backdrop-blur-sm transition-all duration-300",
+          sidebarCollapsed ? "lg:w-24" : "lg:w-72",
+        ].join(" ")}
+      >
+        <div className="flex h-20 items-center justify-between border-b border-slate-200 px-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg">
+              <Building2 className="h-5 w-5" />
+            </div>
 
-        <div className="p-4 border-t border-slate-100">
-          <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-50 rounded-xl transition-colors mb-2">
-             {sidebarCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
-             {!sidebarCollapsed && <span className="text-sm font-medium">Réduire</span>}
-          </button>
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors font-medium">
-            <LogOut size={20} />
-            {!sidebarCollapsed && <span className="text-sm">Déconnexion</span>}
+            {!sidebarCollapsed && (
+              <div className="min-w-0">
+                <p className="truncate text-base font-bold text-slate-900">{brandTitle}</p>
+                <p className="text-xs text-slate-500">Business Workspace</p>
+              </div>
+            )}
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            className="rounded-xl"
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="h-5 w-5" />
+            ) : (
+              <PanelLeftClose className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+
+        {!sidebarCollapsed && (
+          <div className="border-b border-slate-100 px-4 py-4">
+            <BusinessSwitcher
+              businesses={businesses}
+              currentBusiness={currentBusiness}
+              onBusinessChange={handleBusinessChange}
+            />
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto px-3 py-4">
+          <nav className="space-y-2">
+            {filteredNavigation.map((item) => {
+              const isActive =
+                location.pathname === item.href ||
+                location.pathname.startsWith(item.href + "/");
+
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => navigate(item.href)}
+                  className={[
+                    "group flex w-full items-center rounded-2xl transition-all duration-200",
+                    sidebarCollapsed
+                      ? "justify-center px-2 py-3"
+                      : "gap-3 px-4 py-3",
+                    isActive
+                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                  ].join(" ")}
+                  title={item.name}
+                >
+                  <item.icon className="h-5 w-5 shrink-0" />
+
+                  {!sidebarCollapsed && (
+                    <>
+                      <span className="flex-1 text-left font-medium">{item.name}</span>
+                      {item.badge ? (
+                        <span
+                          className={[
+                            "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                            isActive ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-700",
+                          ].join(" ")}
+                        >
+                          {item.badge}
+                        </span>
+                      ) : (
+                        <ChevronRight
+                          className={[
+                            "h-4 w-4 transition-transform",
+                            isActive ? "text-white/80" : "text-slate-400 group-hover:translate-x-0.5",
+                          ].join(" ")}
+                        />
+                      )}
+                    </>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="border-t border-slate-100 p-3">
+          <button
+            onClick={handleLogout}
+            className={[
+              "flex w-full items-center rounded-2xl text-red-600 transition hover:bg-red-50",
+              sidebarCollapsed ? "justify-center px-2 py-3" : "gap-3 px-4 py-3",
+            ].join(" ")}
+            title="Logout"
+          >
+            <LogOut className="h-5 w-5" />
+            {!sidebarCollapsed && <span className="font-medium">Logout</span>}
           </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarCollapsed ? "lg:ml-24" : "lg:ml-72"}`}>
-        
-        {/* Header Unifié */}
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 px-8 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
-              <Menu size={20} />
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">{pageTitle}</h1>
-              <p className="text-[11px] text-slate-400 font-medium uppercase tracking-widest">SaaS Enterprise Platform</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <div className="relative" ref={userMenuRef}>
-              <button 
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-3 p-1 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200"
+      {/* Main Area */}
+      <div className={desktopSidebarWidth}>
+        {/* Topbar */}
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/80 backdrop-blur-md">
+          <div className="flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                className="rounded-xl lg:hidden"
+                onClick={() => setSidebarOpen(true)}
               >
-                <Avatar className="h-9 w-9 ring-2 ring-white shadow-sm">
-                  <AvatarFallback className="bg-gradient-to-br from-slate-700 to-slate-900 text-white text-xs font-bold">
-                    {getInitials(user?.name)}
+                <Menu className="h-6 w-6" />
+              </Button>
+
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-slate-900">
+                  {pageTitle}
+                </h1>
+                <p className="text-sm text-slate-500">
+                  Welcome back{user?.name ? `, ${user.name}` : ""}
+                </p>
+              </div>
+            </div>
+
+            <div ref={userMenuRef} className="relative flex items-center">
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+              >
+                <Avatar className="h-10 w-10 ring-2 ring-slate-100">
+                  <AvatarFallback className="bg-gradient-to-br from-slate-800 to-slate-600 text-white">
+                    {initials(user?.name)}
                   </AvatarFallback>
                 </Avatar>
-                <div className="hidden md:block text-left mr-2">
-                  <p className="text-sm font-bold leading-none text-slate-800">{user?.name}</p>
-                  <p className="text-[10px] text-slate-500 mt-1 font-medium">{user?.email}</p>
+
+                <div className="hidden md:flex flex-col items-start leading-tight">
+                  <span className="max-w-[160px] truncate text-sm font-semibold text-slate-900">
+                    {user?.name ?? "User"}
+                  </span>
+                  <span className="max-w-[160px] truncate text-xs text-slate-500">
+                    {user?.email ?? ""}
+                  </span>
                 </div>
               </button>
 
-              {/* Menu Déroulant Utilisateur */}
               {userMenuOpen && (
-                <div className="absolute right-0 mt-3 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl py-3 animate-in fade-in zoom-in-95 origin-top-right">
-                  <div className="px-4 py-2 border-b border-slate-50 mb-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Session Active</p>
-                    <p className="text-xs font-semibold text-indigo-600 mt-0.5">{user?.role?.replace('_', ' ')}</p>
+                <div className="absolute right-0 top-full mt-3 z-50 w-72 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+                  <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-5 text-white">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12 ring-2 ring-white/30">
+                        <AvatarFallback className="bg-white/20 text-white">
+                          {initials(user?.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-bold">{user?.name ?? "User"}</div>
+                        <div className="truncate text-xs text-white/80">{user?.email ?? ""}</div>
+                        <div className="mt-1 inline-flex rounded-full bg-white/15 px-2 py-1 text-[11px] font-medium">
+                          {user?.role ?? "-"}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <button className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-3 transition-colors">
-                    <Settings size={16} className="text-slate-400" /> Paramètres du Compte
-                  </button>
-                  <button onClick={handleLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 flex items-center gap-3 transition-colors">
-                    <LogOut size={16} /> Se déconnecter
-                  </button>
+
+                  <div className="p-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        navigate("/dashboard/settings");
+                      }}
+                      className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Settings
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Logout
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </header>
 
-        {/* Dynamic Page Content */}
-        <main className="p-8 w-full max-w-screen-2xl mx-auto">
-          <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm min-h-[calc(100vh-12rem)] p-8 relative overflow-hidden">
-             {/* Filigrane discret pour le PFE */}
-            <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none rotate-12">
-               <Building2 size={200} />
+        {/* Content */}
+        <main className="min-h-[calc(100vh-5rem)] bg-slate-50">
+          <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+            <div className="min-h-[calc(100vh-9rem)] rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-6 lg:p-8">
+              <Outlet />
             </div>
-            
-            <Outlet />
           </div>
         </main>
       </div>
 
-      {/* --- WIDGET SUPPORT & IA (Persistant) --- */}
-      <ChatWidget 
-        user={user} 
-        aiInsights={mockAiInsights} 
-      />
+      <AIAssistant />
+      <ChatWidget />
     </div>
   );
 }

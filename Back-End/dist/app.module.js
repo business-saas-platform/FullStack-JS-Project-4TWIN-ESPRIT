@@ -12,6 +12,7 @@ const tenant_middleware_1 = require("./common/middleware/tenant.middleware");
 const config_1 = require("@nestjs/config");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_config_1 = require("./config/typeorm.config");
+const communication_module_1 = require("./modules/communication/communication.module");
 const businesses_module_1 = require("./modules/businesses/businesses.module");
 const users_module_1 = require("./modules/users/users.module");
 const clients_module_1 = require("./modules/clients/clients.module");
@@ -39,6 +40,7 @@ exports.AppModule = AppModule = __decorate([
             users_module_1.UsersModule,
             clients_module_1.ClientsModule,
             invoices_module_1.InvoicesModule,
+            communication_module_1.CommunicationModule,
             tenant_module_1.TenantModule,
             mail_module_1.MailModule,
             expenses_module_1.ExpensesModule,

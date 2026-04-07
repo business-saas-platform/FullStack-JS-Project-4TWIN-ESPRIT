@@ -10,14 +10,8 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
-    "rootDir": "src", 
     "incremental": true,
     "skipLibCheck": true,
-    "strict": true,
-    "noImplicitAny": false,
-    "strictBindCallApply": false,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "esModuleInterop": true
-  }
-}
+    "strict": true
+    }}
+  

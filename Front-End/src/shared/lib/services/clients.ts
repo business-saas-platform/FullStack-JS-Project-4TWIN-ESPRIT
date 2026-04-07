@@ -20,6 +20,9 @@ export const ClientsApi = {
   list: (businessId: string) =>
     api<Client[]>(`/clients?businessId=${businessId}`),
 
+  get: (id: string) =>
+    api<Client>(`/clients/${id}`),
+
   create: (payload: CreateClientPayload) =>
     api<Client>(`/clients`, {
       method: "POST",
