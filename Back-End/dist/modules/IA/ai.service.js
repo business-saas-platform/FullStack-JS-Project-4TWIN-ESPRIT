@@ -18,10 +18,12 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const clients_service_1 = require("../clients/clients.service");
 const invoice_entity_1 = require("../invoices/entities/invoice.entity");
+const ai_model_1 = require("./ai.model");
 let AiService = class AiService {
-    constructor(clientsService, invoiceRepo) {
+    constructor(clientsService, invoiceRepo, aiModel) {
         this.clientsService = clientsService;
         this.invoiceRepo = invoiceRepo;
+        this.aiModel = aiModel;
     }
     async predictRisk(businessId, clientId) {
         const client = await this.clientsService.findOne(businessId, clientId);
@@ -36,10 +38,8 @@ let AiService = class AiService {
         const unpaidRatio = totalInvoices > 0 ? unpaidInvoices / totalInvoices : 0;
         const lateRatio = totalInvoices > 0 ? lateInvoices / totalInvoices : 0;
         const debtRatio = revenue > 0 ? outstanding / revenue : 0;
-        let score = (0.4 * unpaidRatio) +
-            (0.3 * lateRatio) +
-            (0.3 * debtRatio);
-        score = Math.min(1, score);
+        let score = await this.aiModel.predictScore(unpaidRatio, lateRatio, debtRatio);
+        score = Math.max(0, Math.min(1, score));
         let risk;
         if (score >= 0.7) {
             risk = "HIGH";
@@ -80,6 +80,7 @@ exports.AiService = AiService = __decorate([
     (0, common_1.Injectable)(),
     __param(1, (0, typeorm_1.InjectRepository)(invoice_entity_1.InvoiceEntity)),
     __metadata("design:paramtypes", [clients_service_1.ClientsService,
-        typeorm_2.Repository])
+        typeorm_2.Repository,
+        ai_model_1.AiModel])
 ], AiService);
 //# sourceMappingURL=ai.service.js.map

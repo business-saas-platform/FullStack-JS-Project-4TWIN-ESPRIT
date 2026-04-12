@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 
 import { ClientsService } from '../clients/clients.service';
 import { InvoiceEntity } from '../invoices/entities/invoice.entity';
+import { AiModel } from './ai.model';
 
 @Injectable()
 export class AiService {
@@ -11,7 +12,9 @@ export class AiService {
     private readonly clientsService: ClientsService,
 
     @InjectRepository(InvoiceEntity)
-    private readonly invoiceRepo: Repository<InvoiceEntity>
+    private readonly invoiceRepo: Repository<InvoiceEntity>,
+
+    private readonly aiModel: AiModel
   ) {}
 
   async predictRisk(businessId: string, clientId: string) {
@@ -40,13 +43,9 @@ export class AiService {
     const lateRatio = totalInvoices > 0 ? lateInvoices / totalInvoices : 0;
     const debtRatio = revenue > 0 ? outstanding / revenue : 0;
 
-    // 🎯 SCORE (Weighted)
-    let score =
-      (0.4 * unpaidRatio) +
-      (0.3 * lateRatio) +
-      (0.3 * debtRatio);
-
-    score = Math.min(1, score); // clamp 0 → 1
+    // 🎯 MACHINE LEARNING SCORE (TensorFlow)
+    let score = await this.aiModel.predictScore(unpaidRatio, lateRatio, debtRatio);
+    score = Math.max(0, Math.min(1, score)); // clamp 0 → 1 just in case
 
     // 🎯 CLASSIFICATION
     let risk: "LOW" | "MEDIUM" | "HIGH";

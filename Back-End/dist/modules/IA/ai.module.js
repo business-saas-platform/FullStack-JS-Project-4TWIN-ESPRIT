@@ -13,6 +13,7 @@ const ai_controller_1 = require("./ai.controller");
 const typeorm_1 = require("@nestjs/typeorm");
 const invoice_entity_1 = require("../invoices/entities/invoice.entity");
 const clients_module_1 = require("../clients/clients.module");
+const ai_model_1 = require("./ai.model");
 let AiModule = class AiModule {
 };
 exports.AiModule = AiModule;
@@ -22,7 +23,7 @@ exports.AiModule = AiModule = __decorate([
             typeorm_1.TypeOrmModule.forFeature([invoice_entity_1.InvoiceEntity]),
             clients_module_1.ClientsModule,
         ],
-        providers: [ai_service_1.AiService],
+        providers: [ai_service_1.AiService, ai_model_1.AiModel],
         controllers: [ai_controller_1.AiController],
     })
 ], AiModule);
