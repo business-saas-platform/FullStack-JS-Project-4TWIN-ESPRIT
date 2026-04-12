@@ -1,5 +1,6 @@
 import type { Client } from "@/shared/lib/mockData";
 import { api } from "@/shared/lib/apiClient";
+import { api } from "@/shared/lib/apiClient";
 
 export type CreateClientPayload = {
   businessId: string;
@@ -13,7 +14,11 @@ export type CreateClientPayload = {
   taxId?: string;
   type?: "individual" | "company";
   status?: "active" | "inactive";
-  notes?: string;
+  notes?: string; 
+};
+export const AiApi = {
+  getRisk: (clientId: string) =>
+    api(`/ai/risk/${clientId}`),
 };
 
 export const ClientsApi = {
@@ -29,3 +34,4 @@ export const ClientsApi = {
       body: JSON.stringify(payload),
     }),
 };
+

@@ -9,12 +9,12 @@ import { ClientStatus, ClientType } from "../../../common/enums";
 
 @Entity("clients")
 export class ClientEntity {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn("uuid")  //id unique
   id!: string;
 
   @Index()
   @Column({ type: "uuid" })
-  businessId!: string;
+  businessId!: string;  //Chaque client appartient à une entreprise
 
   @Column({ type: "varchar", length: 120 })
   name!: string;

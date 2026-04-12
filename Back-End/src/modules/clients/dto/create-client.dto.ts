@@ -7,7 +7,7 @@ import {
   IsUUID,
   Length,
   Matches,
-} from "class-validator";
+} from "class-validator"; //validation des donnéé entrante
 import { ClientStatus, ClientType } from "../../../common/enums";
 
 export class CreateClientDto {
@@ -17,10 +17,10 @@ export class CreateClientDto {
 
   @IsString()
   @IsNotEmpty()
-  @Length(2, 120)
+  @Length(2, 120) //limite taille 
   name!: string;
 
-  @IsEmail()
+  @IsEmail() //valide mail
   @Length(5, 150)
   email!: string;
 

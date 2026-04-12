@@ -46,12 +46,15 @@ import {
   Sparkles,
   ChevronRight,
   ShieldCheck,
+  BrainCircuit,
+  Activity,
 } from "lucide-react";
 
 import { toast } from "sonner";
 
 import { useBusinessContext } from "@/shared/contexts/BusinessContext";
 import { api } from "@/shared/lib/apiClient";
+import { AiApi } from "@/shared/lib/services/ai";
 
 type Client = {
   id: string;
@@ -129,6 +132,9 @@ export function ClientDetails() {
   const [client, setClient] = useState<Client | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [aiRisk, setAiRisk] = useState<any>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -260,6 +266,21 @@ export function ClientDetails() {
       }
     })();
   }, [id, businessId]);
+
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      try {
+        setAiLoading(true);
+        const res = await AiApi.getRisk(id);
+        if (res) setAiRisk(res);
+      } catch (e) {
+        console.error("AI Risk fetch error:", e);
+      } finally {
+        setAiLoading(false);
+      }
+    })();
+  }, [id]);
 
   const totals = useMemo(() => {
     const totalInvoiced = invoices.reduce((sum, inv) => {
@@ -741,7 +762,7 @@ export function ClientDetails() {
       </section>
 
       {/* Main Info Grid */}
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="rounded-[24px] border-slate-200 shadow-sm">
           <CardHeader>
             <CardTitle>Contact Information</CardTitle>
@@ -831,6 +852,104 @@ export function ClientDetails() {
                 </Badge>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[24px] border-slate-200 shadow-sm relative overflow-hidden">
+          <div className="absolute -right-4 -top-4 p-4 opacity-[0.03] pointer-events-none">
+            <BrainCircuit className="h-32 w-32" />
+          </div>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">
+                <BrainCircuit className="h-4 w-4" />
+              </div>
+              AI Risk Analysis
+              <Badge variant="outline" className="ml-auto rounded-full bg-indigo-50 text-indigo-600 border-indigo-200 text-xs shadow-sm">
+                Beta
+              </Badge>
+            </CardTitle>
+            <CardDescription>Payment behavior & financial health</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {aiLoading ? (
+              <div className="flex flex-col items-center justify-center py-10 text-slate-500">
+                <Loader2 className="h-8 w-8 animate-spin mb-4 text-indigo-400" />
+                <p className="text-sm font-medium animate-pulse text-slate-400">Analyzing payment history...</p>
+              </div>
+            ) : !aiRisk ? (
+              <div className="flex flex-col items-center justify-center py-10 text-slate-400">
+                <BrainCircuit className="h-8 w-8 mb-4 opacity-50" />
+                <p className="text-sm">Not enough data to assess risk</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-end justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-slate-500">Risk Level</p>
+                    <p className={`text-3xl font-semibold tracking-tight ${
+                      aiRisk.risk === "LOW" ? "text-green-600" :
+                      aiRisk.risk === "MEDIUM" ? "text-orange-500" : 
+                      aiRisk.risk === "HIGH" ? "text-red-600" : "text-slate-600"
+                    }`}>
+                      {aiRisk.risk}
+                    </p>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <p className="text-sm font-medium text-slate-500">Confidence Score</p>
+                    <div className="flex items-center gap-2 justify-end">
+                      <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-100">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-1000 ${
+                            aiRisk.risk === "LOW" ? "bg-green-500" :
+                            aiRisk.risk === "MEDIUM" ? "bg-orange-400" : 
+                            aiRisk.risk === "HIGH" ? "bg-red-500" : "bg-slate-300"
+                          }`}
+                          style={{ width: `${Math.max(5, aiRisk.score * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-semibold text-slate-700">
+                        {(aiRisk.score * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`rounded-2xl border p-4 shadow-sm ${
+                  aiRisk.risk === "LOW" ? "bg-gradient-to-r from-green-50/50 to-white border-green-100" :
+                  aiRisk.risk === "MEDIUM" ? "bg-gradient-to-r from-orange-50/50 to-white border-orange-100" : 
+                  aiRisk.risk === "HIGH" ? "bg-gradient-to-r from-red-50/50 to-white border-red-100" : "bg-slate-50 border-slate-100"
+                }`}>
+                  <div className="flex gap-3">
+                    <div className="mt-0.5">
+                      {aiRisk.risk === "LOW" ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      ) : aiRisk.risk === "MEDIUM" ? (
+                        <Activity className="h-5 w-5 text-orange-600" />
+                      ) : (
+                        <AlertCircle className="h-5 w-5 text-red-600" />
+                      )}
+                    </div>
+                    <div>
+                      <p className={`text-sm font-semibold ${
+                        aiRisk.risk === "LOW" ? "text-green-900" :
+                        aiRisk.risk === "MEDIUM" ? "text-orange-900" : 
+                        aiRisk.risk === "HIGH" ? "text-red-900" : "text-slate-900"
+                      }`}>
+                        AI Insights
+                      </p>
+                      <p className={`mt-1 text-sm leading-relaxed ${
+                        aiRisk.risk === "LOW" ? "text-green-700" :
+                        aiRisk.risk === "MEDIUM" ? "text-orange-700" : 
+                        aiRisk.risk === "HIGH" ? "text-red-700" : "text-slate-700"
+                      }`}>
+                        {aiRisk.reason}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 

@@ -25,6 +25,7 @@ const mail_module_1 = require("./modules/mail/mail.module");
 const registration_requests_module_1 = require("./modules/registration-requests/registration-requests.module");
 const tenant_module_1 = require("./common/tenant/tenant.module");
 const security_questions_module_1 = require("./modules/security-questions/security-questions.module");
+const ai_module_1 = require("./modules/IA/ai.module");
 let AppModule = class AppModule {
     configure(consumer) {
         consumer.apply(tenant_middleware_1.TenantMiddleware).forRoutes('*');
@@ -41,6 +42,7 @@ exports.AppModule = AppModule = __decorate([
             clients_module_1.ClientsModule,
             invoices_module_1.InvoicesModule,
             communication_module_1.CommunicationModule,
+            ai_module_1.AiModule,
             tenant_module_1.TenantModule,
             mail_module_1.MailModule,
             expenses_module_1.ExpensesModule,

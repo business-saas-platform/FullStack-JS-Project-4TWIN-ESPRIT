@@ -1,0 +1,85 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AiService = void 0;
+const common_1 = require("@nestjs/common");
+const typeorm_1 = require("@nestjs/typeorm");
+const typeorm_2 = require("typeorm");
+const clients_service_1 = require("../clients/clients.service");
+const invoice_entity_1 = require("../invoices/entities/invoice.entity");
+let AiService = class AiService {
+    constructor(clientsService, invoiceRepo) {
+        this.clientsService = clientsService;
+        this.invoiceRepo = invoiceRepo;
+    }
+    async predictRisk(businessId, clientId) {
+        const client = await this.clientsService.findOne(businessId, clientId);
+        const invoices = await this.invoiceRepo.find({
+            where: { businessId, clientId },
+        });
+        const totalInvoices = invoices.length;
+        const unpaidInvoices = invoices.filter((i) => i.status !== "paid").length;
+        const lateInvoices = invoices.filter((i) => i.status === "overdue").length;
+        const outstanding = Number(client.outstandingBalance || 0);
+        const revenue = Number(client.totalRevenue || 0);
+        const unpaidRatio = totalInvoices > 0 ? unpaidInvoices / totalInvoices : 0;
+        const lateRatio = totalInvoices > 0 ? lateInvoices / totalInvoices : 0;
+        const debtRatio = revenue > 0 ? outstanding / revenue : 0;
+        let score = (0.4 * unpaidRatio) +
+            (0.3 * lateRatio) +
+            (0.3 * debtRatio);
+        score = Math.min(1, score);
+        let risk;
+        if (score >= 0.7) {
+            risk = "HIGH";
+        }
+        else if (score >= 0.4) {
+            risk = "MEDIUM";
+        }
+        else {
+            risk = "LOW";
+        }
+        let reason = "Client is reliable";
+        if (lateRatio > 0.5) {
+            reason = "Frequent late payments";
+        }
+        else if (debtRatio > 0.5) {
+            reason = "High unpaid balance compared to revenue";
+        }
+        else if (unpaidRatio > 0.5) {
+            reason = "Many unpaid invoices";
+        }
+        return {
+            clientId,
+            risk,
+            score: Number(score.toFixed(2)),
+            details: {
+                totalInvoices,
+                unpaidInvoices,
+                lateInvoices,
+                outstanding,
+                revenue,
+            },
+            reason,
+        };
+    }
+};
+exports.AiService = AiService;
+exports.AiService = AiService = __decorate([
+    (0, common_1.Injectable)(),
+    __param(1, (0, typeorm_1.InjectRepository)(invoice_entity_1.InvoiceEntity)),
+    __metadata("design:paramtypes", [clients_service_1.ClientsService,
+        typeorm_2.Repository])
+], AiService);
+//# sourceMappingURL=ai.service.js.map

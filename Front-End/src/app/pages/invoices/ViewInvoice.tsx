@@ -204,7 +204,8 @@ export function ViewInvoice() {
     canManageInvoice &&
     !!invoice &&
     ["sent", "viewed", "overdue"].includes(displayStatus);
-
+///////////////////////////////////
+//////////////////////////////////
   const handleDownload = async () => {
     try {
       const element = document.getElementById("invoice-printable-area");
@@ -249,6 +250,9 @@ export function ViewInvoice() {
       console.error("PDF Generation Error:", e);
     }
   };
+
+  /////////////////
+  ////////////////
 
   const handleSend = async () => {
     if (!invoice) return;

@@ -17,6 +17,8 @@ import { MailModule } from "./modules/mail/mail.module";
 import { RegistrationRequestsModule } from "./modules/registration-requests/registration-requests.module";
 import { TenantModule } from "./common/tenant/tenant.module";
 import { SecurityQuestionsModule } from "./modules/security-questions/security-questions.module";
+import { AiModule } from "./modules/IA/ai.module";
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -26,7 +28,7 @@ import { SecurityQuestionsModule } from "./modules/security-questions/security-q
     ClientsModule,
     InvoicesModule,
     CommunicationModule,
-
+    AiModule,
     TenantModule,
     MailModule,
     ExpensesModule,

@@ -16,9 +16,9 @@ export class ClientsService {
 
     @InjectRepository(InvoiceEntity)
     private readonly invoicesRepo: Repository<InvoiceEntity>
-  ) {}
+  ) { }
 
-  async create(businessId: string, dto: CreateClientDto) {
+  async create(businessId: string, dto: CreateClientDto) { //create
     const entity = this.repo.create({
       businessId,
       name: dto.name.trim(),
@@ -66,7 +66,7 @@ export class ClientsService {
     };
   }
 
-  async findAll(businessId: string) {
+  async findAll(businessId: string) { //read
     const list = await this.repo.find({
       where: { businessId },
       order: { createdAt: "DESC" },
@@ -105,7 +105,7 @@ export class ClientsService {
     } as ClientEntity);
   }
 
-  async update(businessId: string, id: string, dto: UpdateClientDto) {
+  async update(businessId: string, id: string, dto: UpdateClientDto) { //update
     const client = await this.repo.findOne({
       where: { id, businessId },
     });
@@ -115,7 +115,7 @@ export class ClientsService {
     }
 
     if (dto.name !== undefined) {
-      client.name = dto.name.trim();
+      client.name = dto.name.trim(); //nettoie les donnés 
     }
 
     if (dto.email !== undefined) {
@@ -171,7 +171,7 @@ export class ClientsService {
     }
 
     const saved = await this.repo.save(client);
-    const stats = await this.computeClientStats(businessId, saved.id);
+    const stats = await this.computeClientStats(businessId, saved.id); //calcul, avoir des statique dynami
 
     return this.toApi({
       ...saved,
@@ -180,7 +180,7 @@ export class ClientsService {
     } as ClientEntity);
   }
 
-  async remove(businessId: string, id: string) {
+  async remove(businessId: string, id: string) {  //delete 
     const res = await this.repo.delete({ id, businessId });
 
     if (!res.affected) {
