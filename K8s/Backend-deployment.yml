@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: rihabcht/test2:latest
+          image: rihabcht/nest_img:latest
           ports:
             - containerPort: 3000
           env:
