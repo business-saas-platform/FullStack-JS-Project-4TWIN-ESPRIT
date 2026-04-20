@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AIInsightsController = void 0;
 const common_1 = require("@nestjs/common");
@@ -20,9 +21,14 @@ const update_ai_insight_dto_1 = require("./dto/update-ai-insight.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const business_access_guard_1 = require("../../common/guards/business-access.guard");
 const business_id_decorator_1 = require("../../common/decorators/business-id.decorator");
+const cash_flow_forecast_service_1 = require("./cash-flow-forecast.service");
 let AIInsightsController = class AIInsightsController {
-    constructor(s) {
+    constructor(s, cashFlowForecast) {
         this.s = s;
+        this.cashFlowForecast = cashFlowForecast;
+    }
+    forecastCashFlow(businessId, horizon) {
+        return this.cashFlowForecast.forecast(businessId, Number(horizon || 30));
     }
     create(businessId, dto) {
         return this.s.create(businessId, dto);
@@ -42,6 +48,14 @@ let AIInsightsController = class AIInsightsController {
 };
 exports.AIInsightsController = AIInsightsController;
 __decorate([
+    (0, common_1.Get)('cash-flow/forecast'),
+    __param(0, (0, business_id_decorator_1.BusinessId)()),
+    __param(1, (0, common_1.Query)('horizon')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], AIInsightsController.prototype, "forecastCashFlow", null);
+__decorate([
     (0, common_1.Post)(),
     __param(0, (0, business_id_decorator_1.BusinessId)()),
     __param(1, (0, common_1.Body)()),
@@ -57,33 +71,33 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AIInsightsController.prototype, "findAll", null);
 __decorate([
-    (0, common_1.Get)(":id"),
+    (0, common_1.Get)(':id'),
     __param(0, (0, business_id_decorator_1.BusinessId)()),
-    __param(1, (0, common_1.Param)("id")),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], AIInsightsController.prototype, "findOne", null);
 __decorate([
-    (0, common_1.Patch)(":id"),
+    (0, common_1.Patch)(':id'),
     __param(0, (0, business_id_decorator_1.BusinessId)()),
-    __param(1, (0, common_1.Param)("id")),
+    __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String, update_ai_insight_dto_1.UpdateAIInsightDto]),
     __metadata("design:returntype", void 0)
 ], AIInsightsController.prototype, "update", null);
 __decorate([
-    (0, common_1.Delete)(":id"),
+    (0, common_1.Delete)(':id'),
     __param(0, (0, business_id_decorator_1.BusinessId)()),
-    __param(1, (0, common_1.Param)("id")),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], AIInsightsController.prototype, "remove", null);
 exports.AIInsightsController = AIInsightsController = __decorate([
-    (0, common_1.Controller)("ai-insights"),
+    (0, common_1.Controller)('ai-insights'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, business_access_guard_1.BusinessAccessGuard),
-    __metadata("design:paramtypes", [ai_insights_service_1.AIInsightsService])
+    __metadata("design:paramtypes", [ai_insights_service_1.AIInsightsService, typeof (_a = typeof cash_flow_forecast_service_1.CashFlowForecastService !== "undefined" && cash_flow_forecast_service_1.CashFlowForecastService) === "function" ? _a : Object])
 ], AIInsightsController);
 //# sourceMappingURL=ai-insights.controller.js.map
