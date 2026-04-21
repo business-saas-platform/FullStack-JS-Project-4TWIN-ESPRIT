@@ -16,10 +16,6 @@ data:
         metrics_path: '/api/metrics'
         static_configs:
           - targets: ['backend-service:3000']
-      
-      - job_name: 'react-frontend'
-        static_configs:
-          - targets: ['frontend-service:5173']
 ---
 apiVersion: apps/v1
 kind: Deployment
