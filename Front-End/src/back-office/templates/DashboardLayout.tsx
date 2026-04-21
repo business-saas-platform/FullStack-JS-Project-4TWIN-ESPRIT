@@ -204,11 +204,7 @@ export function DashboardLayout() {
             </div>
 
             <div className="border-b border-slate-100 px-4 py-4">
-              <BusinessSwitcher
-                businesses={businesses}
-                currentBusiness={currentBusiness}
-                onBusinessChange={handleBusinessChange}
-              />
+              <BusinessSwitcher />
             </div>
 
             <nav className="space-y-2 px-3 py-4">
@@ -297,11 +293,7 @@ export function DashboardLayout() {
 
         {!sidebarCollapsed && (
           <div className="border-b border-slate-100 px-4 py-4">
-            <BusinessSwitcher
-              businesses={businesses}
-              currentBusiness={currentBusiness}
-              onBusinessChange={handleBusinessChange}
-            />
+            <BusinessSwitcher />
           </div>
         )}
 
