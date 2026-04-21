@@ -1,0 +1,46 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout the repository code
+                checkout scm
+            }
+        }
+        
+        stage('Deploy Monitoring Stack to Minikube') {
+            steps {
+                script {
+                    echo 'Deploying Prometheus and Grafana to Kubernetes...'
+                    // Apply Prometheus manifests
+                    bat 'kubectl apply -f K8s/Prometheus-deployment.yml'
+                    
+                    // Apply Grafana manifests
+                    bat 'kubectl apply -f K8s/Grafana-deployment.yml'
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    echo 'Checking pod and service status...'
+                    bat 'kubectl get pods -l app=prometheus'
+                    bat 'kubectl get pods -l app=grafana'
+                    bat 'kubectl get svc prometheus-service'
+                    bat 'kubectl get svc grafana-service'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Monitoring stack (Prometheus & Grafana) deployed successfully to Minikube!'
+        }
+        failure {
+            echo 'Failed to deploy the monitoring stack. Please check the logs.'
+        }
+    }
+}
