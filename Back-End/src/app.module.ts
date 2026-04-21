@@ -18,6 +18,7 @@ import { RegistrationRequestsModule } from "./modules/registration-requests/regi
 import { TenantModule } from "./common/tenant/tenant.module";
 import { SecurityQuestionsModule } from "./modules/security-questions/security-questions.module";
 import { AiModule } from "./modules/IA/ai.module";
+import { PrometheusModule } from "@willsoto/nestjs-prometheus";
 
 @Module({
   imports: [
@@ -36,7 +37,8 @@ import { AiModule } from "./modules/IA/ai.module";
     AIInsightsModule,
     RegistrationRequestsModule,
     AuthModule,
-    SecurityQuestionsModule
+    SecurityQuestionsModule,
+    PrometheusModule.register()
   ],
 })
 export class AppModule implements NestModule {
