@@ -17,6 +17,9 @@ spec:
           image: rihabcht/react_frontend:11
           ports:
             - containerPort: 5173
+          env:
+            - name: VITE_API_URL
+              value: "http://192.168.49.2:30082/api"
 
 ---
 apiVersion: v1
