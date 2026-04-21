@@ -26,7 +26,6 @@ pnpm-debug.log
 
 # OS Files
 Thumbs.db
-.DS_Store
 
 # Logs
 *.log
@@ -55,3 +54,11 @@ uploads/
 # Mac
 .AppleDouble
 .LSOverride
+
+# Front-End specific
+Front-End/.vite/
+Front-End/**/*.tsbuildinfo
+
+# Back-End specific
+Back-End/.vite/
+Back-End/**/*.tsbuildinfo
