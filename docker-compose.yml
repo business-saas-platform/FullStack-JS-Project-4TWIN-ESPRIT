@@ -6,14 +6,14 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - '3000:3000'
     env_file:
       - ./Back-End/.env
     environment:
       NODE_ENV: production
-      TENANT_ID: ""
-      TENANT_REGION: "TN"
-      TENANT_TIER: ""
+      TENANT_ID: ''
+      TENANT_REGION: 'TN'
+      TENANT_TIER: ''
     depends_on:
       - db
     networks:
