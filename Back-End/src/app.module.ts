@@ -19,6 +19,7 @@ import { MailModule } from './modules/mail/mail.module';
 import { RegistrationRequestsModule } from './modules/registration-requests/registration-requests.module';
 import { TenantModule } from './common/tenant/tenant.module';
 import { SecurityQuestionsModule } from './modules/security-questions/security-questions.module';
+import { HealthController } from './health/health.controller';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -42,6 +43,7 @@ import { SecurityQuestionsModule } from './modules/security-questions/security-q
     AuthModule,
     SecurityQuestionsModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
