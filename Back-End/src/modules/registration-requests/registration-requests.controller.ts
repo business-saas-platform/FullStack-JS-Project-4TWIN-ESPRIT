@@ -13,6 +13,7 @@ import {
 import { RegistrationRequestsService } from "./registration-requests.service";
 import { CreateRegistrationRequestDto } from "./dto/create-registration-request.dto";
 import { ApproveRequestDto, RejectRequestDto } from "./dto/review-request.dto";
+import { ConfirmOnlinePaymentDto } from "./dto/confirm-online-payment.dto";
 
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { PlatformAdminDbGuard } from "../../common/guards/platform-admin-db.guard";
@@ -61,6 +62,14 @@ export class RegistrationRequestsController {
   }
 
   // =====================================================
+  // PUBLIC — Get payment request details for checkout page
+  // =====================================================
+  @Get(":id/public-payment")
+  findPublicPaymentDetails(@Param("id") id: string) {
+    return this.service.findPublicPaymentDetails(id);
+  }
+
+  // =====================================================
   // ADMIN — Approve request
   // =====================================================
   @UseGuards(JwtAuthGuard, PlatformAdminDbGuard)
@@ -101,6 +110,15 @@ export class RegistrationRequestsController {
   @Post(":id/mock-payment/create")
   createMockPayment(@Param("id") id: string) {
     return this.service.createMockPayment(id);
+  }
+
+  // =====================================================
+  // ADMIN — Create PayPal payment session
+  // =====================================================
+  @UseGuards(JwtAuthGuard, PlatformAdminDbGuard)
+  @Post(":id/paypal-payment/create")
+  createPayPalPayment(@Param("id") id: string) {
+    return this.service.createPayPalPayment(id);
   }
 
   // =====================================================
@@ -146,5 +164,16 @@ export class RegistrationRequestsController {
       body.paymentStatus,
       body.paymentReference
     );
+  }
+
+  // =====================================================
+  // PUBLIC — Confirm online payment after provider capture
+  // =====================================================
+  @Post(":id/online-payment/confirm")
+  confirmOnlinePayment(
+    @Param("id") id: string,
+    @Body() dto: ConfirmOnlinePaymentDto
+  ) {
+    return this.service.confirmOnlinePayment(id, dto);
   }
 }

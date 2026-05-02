@@ -38,16 +38,16 @@ export function SignUpSection() {
     <section id="signup" className="py-20 bg-card">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <Badge className="mb-4">Commencer maintenant</Badge>
-          <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-4">
+          <Badge className="mb-4 rounded-full bg-blue-100 px-3 py-1 text-blue-700 hover:bg-blue-100">Commencer maintenant</Badge>
+          <h2 className="text-3xl lg:text-5xl font-bold tracking-tight text-foreground mb-4">
             Demandez une démo personnalisée
           </h2>
-          <p className="text-xl text-muted-foreground">
+          <p className="text-lg lg:text-xl text-muted-foreground">
             Remplissez le formulaire ci-dessous et notre équipe vous contactera sous 24 heures
           </p>
         </div>
 
-        <Card>
+        <Card className="border-white/60 bg-card/95 shadow-xl backdrop-blur-sm">
           <CardHeader>
             <CardTitle>Informations de votre entreprise</CardTitle>
             <CardDescription>
@@ -65,6 +65,7 @@ export function SignUpSection() {
                     value={formData.businessName}
                     onChange={(e) => handleChange("businessName", e.target.value)}
                     required
+                    className="h-11 rounded-xl"
                   />
                 </div>
                 <div className="space-y-2">
@@ -75,6 +76,7 @@ export function SignUpSection() {
                     value={formData.fullName}
                     onChange={(e) => handleChange("fullName", e.target.value)}
                     required
+                    className="h-11 rounded-xl"
                   />
                 </div>
               </div>
@@ -89,6 +91,7 @@ export function SignUpSection() {
                     value={formData.email}
                     onChange={(e) => handleChange("email", e.target.value)}
                     required
+                    className="h-11 rounded-xl"
                   />
                 </div>
                 <div className="space-y-2">
@@ -100,6 +103,7 @@ export function SignUpSection() {
                     value={formData.phone}
                     onChange={(e) => handleChange("phone", e.target.value)}
                     required
+                    className="h-11 rounded-xl"
                   />
                 </div>
               </div>
@@ -108,7 +112,7 @@ export function SignUpSection() {
                 <div className="space-y-2">
                   <Label htmlFor="businessType">Type d'entreprise *</Label>
                   <Select value={formData.businessType} onValueChange={(value) => handleChange("businessType", value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 rounded-xl">
                       <SelectValue placeholder="Sélectionnez..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -124,7 +128,7 @@ export function SignUpSection() {
                 <div className="space-y-2">
                   <Label htmlFor="teamSize">Taille de l'équipe *</Label>
                   <Select value={formData.teamSize} onValueChange={(value) => handleChange("teamSize", value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 rounded-xl">
                       <SelectValue placeholder="Sélectionnez..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -146,6 +150,7 @@ export function SignUpSection() {
                   rows={4}
                   value={formData.message}
                   onChange={(e) => handleChange("message", e.target.value)}
+                  className="rounded-xl"
                 />
               </div>
 

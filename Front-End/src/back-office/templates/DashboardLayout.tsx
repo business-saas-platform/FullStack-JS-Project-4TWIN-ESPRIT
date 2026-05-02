@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-
+import { Bot } from "lucide-react";
 import { MessageSquare } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -28,6 +28,7 @@ import { Button, Avatar, AvatarFallback } from '@/shared/ui';
 import { BusinessSwitcher } from '../molecules/BusinessSwitcher';
 import { AIAssistant } from '../organisms/AIAssistant';
 import ChatWidget from '@/shared/components/ChatWidget';
+import { FirstLoginOnboarding } from '@/shared/components/FirstLoginOnboarding';
 import { useBusinessContext } from '@/shared/contexts/BusinessContext';
 import { useAuth } from '@/shared/contexts/AuthContext';
 
@@ -55,6 +56,13 @@ const navigation: NavItem[] = [
     perm: 'ai.read',
     badge: 'AI',
   },
+  {
+  name: "AI Coach",
+  href: "/dashboard/ai-coach",
+  icon: Bot,
+  perm: "ai.read",
+  badge: "NEW",
+},
   { name: 'Cash Flow', href: '/dashboard/cash-flow-forecast', icon: Activity, perm: 'ai.read' },
   {
     name: 'Invoice Risk',
@@ -107,6 +115,7 @@ export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const { currentBusiness, setCurrentBusiness, businesses, isReady } = useBusinessContext();
   const { user, logout, isReady: authReady, hasPermission } = useAuth();
@@ -192,6 +201,17 @@ export function DashboardLayout() {
       navigate('/dashboard', { replace: true });
     }
   }, [authReady, user, location.pathname, hasPermission, navigate]);
+
+  useEffect(() => {
+    if (!authReady || !user) return;
+    if (user.role === 'platform_admin') return;
+
+    const key = `first_login_onboarding_seen_${user.id}`;
+    const alreadySeen = localStorage.getItem(key) === 'true';
+    if (!alreadySeen) {
+      setShowOnboarding(true);
+    }
+  }, [authReady, user]);
 
   const desktopSidebarWidth = sidebarCollapsed ? 'lg:pl-24' : 'lg:pl-72';
 
@@ -492,6 +512,16 @@ export function DashboardLayout() {
 
       <AIAssistant />
       <ChatWidget />
+      <FirstLoginOnboarding
+        open={showOnboarding}
+        userName={user?.name}
+        onClose={() => {
+          if (user?.id) {
+            localStorage.setItem(`first_login_onboarding_seen_${user.id}`, 'true');
+          }
+          setShowOnboarding(false);
+        }}
+      />
     </div>
   );
 }

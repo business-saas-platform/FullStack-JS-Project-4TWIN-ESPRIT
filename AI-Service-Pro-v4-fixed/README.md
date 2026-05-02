@@ -127,3 +127,82 @@ Ce package utilise maintenant `pg8000` (pur Python) au lieu de `psycopg2-binary`
 - Routes `/api/v1/*` corrigées
 - Mapping PostgreSQL UUID corrigé
 - Mapping des enums PostgreSQL `ai_insights_*_enum` corrigé
+
+## Ajouts v5 — notifications AI intelligentes
+
+Cette version ajoute une couche de notifications AI plus complète, toujours sans toucher au backend NestJS ni au module `communication`.
+
+### Nouveaux champs notification
+Chaque notification contient maintenant :
+- `id` unique pour les actions frontend
+- `read` pour lu/non lu
+- `category` (`invoices`, `expenses`, `cash_flow`, `revenue`, etc.)
+- `priority` de 1 à 5
+- `actionLabel` et `actionUrl` pour afficher un bouton d'action dans le dashboard
+- `score` AI optionnel
+- `meta.dedupeKey` pour éviter les doublons à chaque run/scheduler
+
+### Nouveaux endpoints notifications
+- `GET /api/v1/businesses/{business_id}/notifications?include_read=true&limit=50`
+- `GET /api/v1/businesses/{business_id}/notifications/unread-count`
+- `PATCH /api/v1/businesses/{business_id}/notifications/{notification_id}/read`
+- `PATCH /api/v1/businesses/{business_id}/notifications/read-all`
+- `DELETE /api/v1/businesses/{business_id}/notifications/{notification_id}`
+- `DELETE /api/v1/businesses/{business_id}/notifications?only_read=false`
+
+### Règles AI ajoutées
+Lors de `POST /api/v1/businesses/{business_id}/run`, le service peut créer :
+- alerte facture à risque de retard
+- alerte facture overdue
+- alerte dépense anormale
+- alerte ratio dépenses/revenus élevé
+- alerte cashflow négatif
+- notification positive si la situation est stable
+
+Les alertes `warning` et `critical` peuvent aussi être envoyées par email si `ENABLE_EMAIL_NOTIFICATIONS=true` et si le business possède un email.
+
+## Ajouts v6 — AI Business Coach
+
+Cette version ajoute l'endpoint utilisé par la nouvelle page frontend **AI Business Coach**.
+
+### Nouvel endpoint
+- `GET /api/v1/businesses/{business_id}/ai-coach`
+
+### Réponse retournée
+```json
+{
+  "businessId": "uuid-du-business",
+  "generatedAt": "2026-05-02T15:30:00Z",
+  "total": 4,
+  "highPriority": 2,
+  "items": [
+    {
+      "id": "coach-overdue-invoices",
+      "businessId": "uuid-du-business",
+      "title": "Relancer les factures en retard",
+      "message": "...",
+      "category": "invoices",
+      "priority": "high",
+      "action": "Voir factures en retard",
+      "actionUrl": "/dashboard/invoices?status=overdue",
+      "score": 0.8,
+      "createdAt": "2026-05-02T15:30:00Z"
+    }
+  ]
+}
+```
+
+### Logique AI Coach
+Le coach utilise le résumé AI existant et génère automatiquement des conseils selon :
+- factures en retard
+- factures à risque de retard
+- forecast cash flow négatif ou positif
+- dépenses anormales
+- ratio dépenses/revenus élevé
+- segment client dominant
+- situation stable
+
+### Test rapide
+```bash
+curl http://127.0.0.1:8010/api/v1/businesses/YOUR_BUSINESS_UUID/ai-coach
+```

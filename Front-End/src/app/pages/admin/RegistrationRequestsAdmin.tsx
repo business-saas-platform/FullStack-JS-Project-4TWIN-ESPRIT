@@ -156,6 +156,7 @@ function PaymentMethodBadge({
 
   const map: Record<string, string> = {
     mock_online: "Mock Online",
+    paypal: "PayPal API",
     cash: "Cash",
     bank_transfer: "Bank Transfer",
     manual: "Manual",
@@ -398,6 +399,21 @@ export default function RegistrationRequestsAdmin() {
       await fetchList();
     } catch (err: any) {
       toast.error("Mock payment creation failed", {
+        description: err?.message || "Unknown error",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const createPayPalPayment = async (id: string) => {
+    try {
+      setActionLoading(`paypal-create-${id}`);
+      await RegistrationRequestsApi.createPayPalPayment(id);
+      toast.success("PayPal payment session created");
+      await fetchList();
+    } catch (err: any) {
+      toast.error("PayPal payment creation failed", {
         description: err?.message || "Unknown error",
       });
     } finally {
@@ -913,12 +929,22 @@ export default function RegistrationRequestsAdmin() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Button
                       variant="outline"
+                      onClick={() => createPayPalPayment(selectedItem.id)}
+                      disabled={actionLoading === `paypal-create-${selectedItem.id}`}
+                      className="justify-start rounded-xl"
+                    >
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Create PayPal Payment
+                    </Button>
+
+                    <Button
+                      variant="outline"
                       onClick={() => createMockPayment(selectedItem.id)}
                       disabled={actionLoading === `mock-create-${selectedItem.id}`}
                       className="justify-start rounded-xl"
                     >
                       <CreditCard className="mr-2 h-4 w-4" />
-                      Create Mock Payment
+                      Create Mock Payment (Test)
                     </Button>
 
                     <Button

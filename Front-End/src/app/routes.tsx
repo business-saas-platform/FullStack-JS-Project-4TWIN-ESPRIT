@@ -12,13 +12,13 @@ import PlatformSupport from '@/back-office/pages/admin/PlatformSupport';
 
 // Front-office
 import { LandingPage } from '@/front-office/pages/LandingPage';
-import { MockPaymentPage } from '@/front-office/pages/MockPaymentPage';
+import { PayPalPaymentPage } from '@/app/pages/PayPalPaymentPage';
 
 // Layouts
 import { AuthLayout } from '@/back-office/templates/AuthLayout';
 import { DashboardLayout } from '@/back-office/templates/DashboardLayout';
 import { PlatformAdminLayout } from '@/back-office/templates/PlatformAdminLayout';
-
+import AICoach from "@/app/pages/ai/AICoach";
 // Auth Pages
 import { Login } from '@/app/pages/auth/Login';
 import { Register } from '@/back-office/pages/auth/Register';
@@ -56,7 +56,7 @@ import { CashFlowForecast } from '@/app/pages/ai/CashFlowForecast';
 import { InvoiceLateRisk } from '@/app/pages/ai/InvoiceLateRisk';
 import { InvoiceCollectionCopilot } from '@/app/pages/ai/InvoiceCollectionCopilot';
 import { WhatIfSimulator } from '@/app/pages/ai/WhatIfSimulator';
-
+import AIReport from "@/app/pages/ai/AIReport";
 // Company setup
 import CompanySetup from '@/app/pages/businesses/CompanySetup';
 
@@ -65,7 +65,8 @@ export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   { path: '/auth/oauth-callback', element: <OAuthCallback /> },
   { path: '/oauth-success', element: <OAuthSuccess /> },
-  { path: '/mock-payment/:id', element: <MockPaymentPage /> },
+  { path: '/mock-payment/:id', element: <PayPalPaymentPage /> },
+  { path: '/paypal-payment/:id', element: <PayPalPaymentPage /> },
 
   // AUTH
   {
@@ -172,6 +173,26 @@ export const router = createBrowserRouter([
           </RequireCompanySetup>
         ),
       },
+      {
+  path: "ai-coach",
+  element: (
+    <RequireCompanySetup>
+      <RequirePermission permission="ai:read">
+        <AICoach />
+      </RequirePermission>
+    </RequireCompanySetup>
+  ),
+},
+{
+  path: "ai-report",
+  element: (
+    <RequireCompanySetup>
+      <RequirePermission permission="ai:read">
+        <AIReport />
+      </RequirePermission>
+    </RequireCompanySetup>
+  ),
+},
       {
         path: 'cash-flow-forecast',
         element: (

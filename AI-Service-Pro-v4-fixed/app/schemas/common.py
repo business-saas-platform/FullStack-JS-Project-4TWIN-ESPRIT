@@ -25,13 +25,21 @@ class InsightOut(BaseModel):
 
 
 class NotificationOut(BaseModel):
+    id: str | None = None
     businessId: str
     level: Literal['info', 'warning', 'critical']
     title: str
     message: str
     createdAt: datetime
-    channel: Literal['dashboard', 'email'] = 'dashboard'
+    channel: Literal['dashboard', 'email', 'dashboard_email'] = 'dashboard'
     sent: bool = False
+    read: bool = False
+    category: Literal['revenue', 'expenses', 'clients', 'cash_flow', 'invoices', 'system'] = 'system'
+    priority: int = Field(default=3, ge=1, le=5)
+    actionLabel: str | None = None
+    actionUrl: str | None = None
+    source: str = 'ai_engine'
+    score: float | None = Field(default=None, ge=0, le=1)
     meta: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -53,6 +61,27 @@ class SummaryOut(BaseModel):
     topRecommendations: list[str]
 
 
+class CoachAdviceOut(BaseModel):
+    id: str
+    businessId: str
+    title: str
+    message: str
+    category: Literal['growth', 'risk', 'cashflow', 'clients', 'operations', 'invoices', 'expenses'] = 'operations'
+    priority: Literal['low', 'medium', 'high'] = 'medium'
+    action: str | None = None
+    actionUrl: str | None = None
+    score: float | None = Field(default=None, ge=0, le=1)
+    createdAt: datetime
+
+
+class CoachResponse(BaseModel):
+    businessId: str
+    generatedAt: datetime
+    total: int
+    highPriority: int
+    items: list[CoachAdviceOut]
+
+
 class TrainResponse(BaseModel):
     success: bool
     message: str
@@ -65,3 +94,17 @@ class RunResponse(BaseModel):
     createdInsights: int
     notifications: int
     imagePath: str | None = None
+
+
+class NotificationListResponse(BaseModel):
+    businessId: str
+    total: int
+    unread: int
+    items: list[NotificationOut]
+
+
+class NotificationActionResponse(BaseModel):
+    success: bool
+    businessId: str
+    affected: int = 0
+    unread: int = 0

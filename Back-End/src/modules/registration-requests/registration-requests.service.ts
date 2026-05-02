@@ -17,6 +17,7 @@ import * as bcrypt from "bcrypt";
 import { RegistrationRequestEntity } from "./entities/registration-request.entity";
 import { CreateRegistrationRequestDto } from "./dto/create-registration-request.dto";
 import { ApproveRequestDto, RejectRequestDto } from "./dto/review-request.dto";
+import { ConfirmOnlinePaymentDto } from "./dto/confirm-online-payment.dto";
 import { UserEntity } from "../users/entities/user.entity";
 import { BusinessEntity } from "../businesses/entities/business.entity";
 import { TeamMemberEntity } from "../team-members/entities/team-member.entity";
@@ -98,7 +99,11 @@ export class RegistrationRequestsService {
       paymentMethod: normalizedPaymentMethod,
       paymentStatus: initialPaymentStatus,
       paymentProvider:
-        normalizedPaymentMethod === PaymentMethod.MOCK_ONLINE ? "mock" : null,
+        normalizedPaymentMethod === PaymentMethod.MOCK_ONLINE
+          ? "mock"
+          : normalizedPaymentMethod === PaymentMethod.PAYPAL
+          ? "paypal"
+          : null,
       paymentReference:
         normalizedPaymentMethod === PaymentMethod.MOCK_ONLINE
           ? this.generateMockPaymentReference()
@@ -115,6 +120,10 @@ export class RegistrationRequestsService {
 
     if (saved.paymentMethod === PaymentMethod.MOCK_ONLINE) {
       saved.paymentUrl = `/mock-payment/${saved.id}`;
+      await this.requests.save(saved);
+    }
+    if (saved.paymentMethod === PaymentMethod.PAYPAL) {
+      saved.paymentUrl = `/paypal-payment/${saved.id}`;
       await this.requests.save(saved);
     }
 
@@ -153,6 +162,25 @@ async list(
     return req;
   }
 
+  async findPublicPaymentDetails(id: string) {
+    const req = await this.requests.findOne({ where: { id } });
+    if (!req) throw new NotFoundException("Request not found");
+
+    return {
+      id: req.id,
+      ownerName: req.ownerName,
+      ownerEmail: req.ownerEmail,
+      companyName: req.companyName,
+      selectedPlan: req.selectedPlan,
+      paymentStatus: req.paymentStatus,
+      paymentMethod: req.paymentMethod,
+      paymentProvider: req.paymentProvider,
+      paymentReference: req.paymentReference,
+      paymentUrl: req.paymentUrl,
+      status: req.status,
+    };
+  }
+
   // =====================================================
   // CREATE MOCK PAYMENT
   // =====================================================
@@ -171,6 +199,26 @@ async list(
     req.paymentStatus = PaymentStatus.PENDING;
     req.paymentReference = this.generateMockPaymentReference();
     req.paymentUrl = `/mock-payment/${req.id}`;
+    req.paidAt = null;
+
+    return this.requests.save(req);
+  }
+
+  async createPayPalPayment(requestId: string) {
+    const req = await this.requests.findOne({ where: { id: requestId } });
+    if (!req) throw new NotFoundException("Request not found");
+
+    if (req.status !== RegistrationStatus.PENDING) {
+      throw new BadRequestException(
+        "Payment session can only be created for pending requests"
+      );
+    }
+
+    req.paymentMethod = PaymentMethod.PAYPAL;
+    req.paymentProvider = "paypal";
+    req.paymentStatus = PaymentStatus.PENDING;
+    req.paymentReference = null;
+    req.paymentUrl = `/paypal-payment/${req.id}`;
     req.paidAt = null;
 
     return this.requests.save(req);
@@ -256,6 +304,125 @@ async list(
     return this.requests.save(req);
   }
 
+  async confirmOnlinePayment(
+    requestId: string,
+    payload: ConfirmOnlinePaymentDto
+  ) {
+    const req = await this.requests.findOne({ where: { id: requestId } });
+    if (!req) throw new NotFoundException("Request not found");
+
+    if (req.status !== RegistrationStatus.PENDING) {
+      throw new BadRequestException("Request already reviewed");
+    }
+
+    const orderId = payload.orderId?.trim();
+    if (!orderId) {
+      throw new BadRequestException("Missing payment reference");
+    }
+
+    const captureResult = await this.capturePayPalOrder(orderId);
+    const captureId =
+      captureResult?.purchase_units?.[0]?.payments?.captures?.[0]?.id;
+    const capturedAmount =
+      captureResult?.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value;
+    const capturedCurrency =
+      captureResult?.purchase_units?.[0]?.payments?.captures?.[0]?.amount
+        ?.currency_code;
+    const captureStatus =
+      captureResult?.purchase_units?.[0]?.payments?.captures?.[0]?.status;
+
+    const expectedAmount = this.getExpectedPlanAmountUsd(req.selectedPlan);
+
+    if (captureStatus !== "COMPLETED") {
+      throw new BadRequestException("PayPal capture is not completed");
+    }
+
+    if (capturedCurrency !== "USD") {
+      throw new BadRequestException("Unsupported payment currency");
+    }
+
+    if (capturedAmount !== expectedAmount) {
+      throw new BadRequestException("Captured amount does not match selected plan");
+    }
+
+    req.paymentMethod = PaymentMethod.PAYPAL;
+    req.paymentProvider = (payload.provider || "paypal").trim().toLowerCase();
+    req.paymentStatus = PaymentStatus.PAID;
+    req.paymentReference = captureId || orderId;
+    req.paymentUrl = req.paymentUrl || `/paypal-payment/${req.id}`;
+    req.paidAt = new Date();
+
+    return this.requests.save(req);
+  }
+
+  private getExpectedPlanAmountUsd(plan?: string | null): string {
+    const value = String(plan || "").toLowerCase();
+    if (value.includes("professional") || value.includes("pro")) return "29.00";
+    if (value.includes("business")) return "59.00";
+    if (value.includes("enterprise")) return "99.00";
+    return "10.00";
+  }
+
+  private getPayPalBaseUrl(): string {
+    const mode = String(process.env.PAYPAL_MODE || "sandbox").toLowerCase();
+    return mode === "live"
+      ? "https://api-m.paypal.com"
+      : "https://api-m.sandbox.paypal.com";
+  }
+
+  private async getPayPalAccessToken(): Promise<string> {
+    const clientId = process.env.PAYPAL_CLIENT_ID;
+    const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw new BadRequestException("PayPal server credentials are not configured");
+    }
+
+    const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+    const response = await fetch(`${this.getPayPalBaseUrl()}/v1/oauth2/token`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${basic}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: "grant_type=client_credentials",
+    });
+
+    if (!response.ok) {
+      throw new BadRequestException("Unable to authenticate with PayPal");
+    }
+
+    const data = (await response.json()) as { access_token?: string };
+    if (!data.access_token) {
+      throw new BadRequestException("Invalid PayPal auth response");
+    }
+    return data.access_token;
+  }
+
+  private async capturePayPalOrder(orderId: string): Promise<any> {
+    const token = await this.getPayPalAccessToken();
+    const response = await fetch(
+      `${this.getPayPalBaseUrl()}/v2/checkout/orders/${orderId}/capture`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new BadRequestException(
+        `PayPal capture failed: ${data?.message || "unknown error"}`
+      );
+    }
+
+    return data;
+  }
+
   // =====================================================
   // APPROVE (ADMIN)
   // =====================================================
@@ -277,12 +444,13 @@ async list(
 
     // payment rule
     if (
-      req.paymentMethod === PaymentMethod.MOCK_ONLINE &&
+      (req.paymentMethod === PaymentMethod.MOCK_ONLINE ||
+        req.paymentMethod === PaymentMethod.PAYPAL) &&
       req.paymentStatus !== PaymentStatus.PAID &&
       req.paymentStatus !== PaymentStatus.WAIVED
     ) {
       throw new BadRequestException(
-        "This request cannot be approved before mock payment is completed"
+        "This request cannot be approved before online payment is completed"
       );
     }
 
@@ -440,6 +608,7 @@ async list(
   private getInitialPaymentStatus(paymentMethod: PaymentMethod): PaymentStatus {
     switch (paymentMethod) {
       case PaymentMethod.MOCK_ONLINE:
+      case PaymentMethod.PAYPAL:
         return PaymentStatus.PENDING;
 
       case PaymentMethod.CASH:

@@ -6,6 +6,7 @@ export enum RegistrationStatus {
 
 export enum PaymentMethod {
   MOCK_ONLINE = "mock_online",
+  PAYPAL = "paypal",
   CASH = "cash",
   BANK_TRANSFER = "bank_transfer",
   MANUAL = "manual",

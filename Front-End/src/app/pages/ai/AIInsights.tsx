@@ -12,7 +12,27 @@ import {
   Wallet,
   Sparkles,
   BarChart3,
+  Bell,
+  Check,
+  Trash2,
 } from "lucide-react";
+
+
+
+type AINotification = {
+  id: string;
+  businessId?: string;
+  title: string;
+  message: string;
+  category?: string;
+  level?: "info" | "warning" | "critical" | string;
+  priority?: number | "info" | "warning" | "critical" | string;
+  score?: number;
+  read: boolean;
+  actionLabel?: string;
+  actionUrl?: string;
+  createdAt: string;
+};
 
 type AISummary = {
   businessId: string;
@@ -85,6 +105,110 @@ function RiskBadge({
   );
 }
 
+function getNotificationTone(notification: AINotification) {
+  const level = notification.level || String(notification.priority || "info");
+
+  if (level === "critical" || notification.priority === 5) {
+    return "border-red-200 bg-red-50 text-red-700";
+  }
+
+  if (level === "warning" || notification.priority === 4) {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+
+  return "border-blue-200 bg-blue-50 text-blue-700";
+}
+
+function normalizeNotifications(response: any): AINotification[] {
+  const items = Array.isArray(response)
+    ? response
+    : Array.isArray(response?.items)
+    ? response.items
+    : Array.isArray(response?.notifications)
+    ? response.notifications
+    : [];
+
+  return items.filter(Boolean).map((item: any) => ({
+    ...item,
+    id: String(item.id || crypto.randomUUID()),
+    title: item.title || "AI Notification",
+    message: item.message || "",
+    read: Boolean(item.read),
+    level: item.level || (typeof item.priority === "string" ? item.priority : "info"),
+    createdAt: item.createdAt || item.created_at || new Date().toISOString(),
+  }));
+}
+
+function NotificationCard({
+  notification,
+  onRead,
+  onDelete,
+}: {
+  notification: AINotification;
+  onRead: (notificationId: string) => void;
+  onDelete: (notificationId: string) => void;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border p-4 ${getNotificationTone(notification)} ${
+        notification.read ? "opacity-70" : ""
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-bold">{notification.title}</h3>
+            {!notification.read ? (
+              <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                New
+              </span>
+            ) : null}
+          </div>
+
+          <p className="mt-1 text-sm leading-6">{notification.message}</p>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs opacity-80">
+            {notification.category ? <span>{notification.category}</span> : null}
+            {notification.score !== undefined ? <span>Score: {notification.score}</span> : null}
+            <span>{formatDate(notification.createdAt)}</span>
+          </div>
+
+          {notification.actionUrl ? (
+            <a
+              href={notification.actionUrl}
+              className="mt-3 inline-flex text-sm font-semibold underline"
+            >
+              {notification.actionLabel || "Voir détails"}
+            </a>
+          ) : null}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          {!notification.read ? (
+            <button
+              onClick={() => onRead(notification.id)}
+              className="rounded-xl bg-white/70 p-2 transition hover:bg-white"
+              title="Marquer comme lue"
+              type="button"
+            >
+              <Check className="h-4 w-4" />
+            </button>
+          ) : null}
+
+          <button
+            onClick={() => onDelete(notification.id)}
+            className="rounded-xl bg-white/70 p-2 transition hover:bg-white"
+            title="Supprimer"
+            type="button"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function formatMoney(value: number) {
   return new Intl.NumberFormat("fr-FR", {
     minimumFractionDigits: 0,
@@ -108,10 +232,25 @@ export function AIInsights() {
   const [loading, setLoading] = useState(false);
   const [bootLoading, setBootLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notifications, setNotifications] = useState<AINotification[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   const loadSummary = async (businessId: string) => {
     const summary = await AIService.getSummary(businessId);
     setData(summary);
+  };
+
+  const loadNotifications = async (businessId: string) => {
+    setNotificationsLoading(true);
+
+    try {
+      const response = await AIService.getNotifications(businessId);
+      setNotifications(normalizeNotifications(response));
+    } catch {
+      setNotifications([]);
+    } finally {
+      setNotificationsLoading(false);
+    }
   };
 
   const runAnalysis = async (showLoader = true) => {
@@ -122,7 +261,10 @@ export function AIInsights() {
       if (showLoader) setLoading(true);
 
       await AIService.runAnalysis(currentBusinessId);
-      await loadSummary(currentBusinessId);
+      await Promise.all([
+        loadSummary(currentBusinessId),
+        loadNotifications(currentBusinessId),
+      ]);
     } catch (err: any) {
       setError(err?.message || "Erreur lors de l’analyse AI.");
     } finally {
@@ -140,7 +282,10 @@ export function AIInsights() {
 
       try {
         setError("");
-        await loadSummary(currentBusinessId);
+        await Promise.all([
+          loadSummary(currentBusinessId),
+          loadNotifications(currentBusinessId),
+        ]);
       } catch {
         await runAnalysis(false);
       } finally {
@@ -160,6 +305,43 @@ export function AIInsights() {
     if (!data?.clientSegments) return [];
     return Object.entries(data.clientSegments);
   }, [data]);
+
+  const safeNotifications = useMemo(
+    () => (Array.isArray(notifications) ? notifications : []),
+    [notifications]
+  );
+
+  const unreadNotificationsCount = useMemo(
+    () => safeNotifications.filter((item) => !item.read).length,
+    [safeNotifications]
+  );
+
+  const markNotificationAsRead = async (notificationId: string) => {
+    if (!currentBusinessId) return;
+
+    await AIService.markNotificationAsRead(currentBusinessId, notificationId);
+    setNotifications((items) =>
+      items.map((item) =>
+        item.id === notificationId ? { ...item, read: true } : item
+      )
+    );
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    if (!currentBusinessId) return;
+
+    await AIService.markAllNotificationsAsRead(currentBusinessId);
+    setNotifications((items) => items.map((item) => ({ ...item, read: true })));
+  };
+
+  const deleteNotification = async (notificationId: string) => {
+    if (!currentBusinessId) return;
+
+    await AIService.deleteNotification(currentBusinessId, notificationId);
+    setNotifications((items) =>
+      items.filter((item) => item.id !== notificationId)
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -204,6 +386,77 @@ export function AIInsights() {
           {error}
         </div>
       ) : null}
+
+
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+        <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-blue-50 p-3 text-blue-700">
+              <Bell className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">
+                AI Notifications
+                {unreadNotificationsCount > 0 ? (
+                  <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
+                    {unreadNotificationsCount}
+                  </span>
+                ) : null}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Alertes automatiques générées par l’analyse AI.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => currentBusinessId && loadNotifications(currentBusinessId)}
+              disabled={notificationsLoading || !currentBusinessId}
+              className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-semibold transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+              type="button"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${notificationsLoading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </button>
+
+            <button
+              onClick={markAllNotificationsAsRead}
+              disabled={!currentBusinessId || unreadNotificationsCount === 0}
+              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              type="button"
+            >
+              Tout marquer lu
+            </button>
+          </div>
+        </div>
+
+        {notificationsLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-muted" />
+            ))}
+          </div>
+        ) : safeNotifications.length > 0 ? (
+          <div className="space-y-3">
+            {safeNotifications.map((notification) => (
+              <NotificationCard
+                key={notification.id}
+                notification={notification}
+                onRead={markNotificationAsRead}
+                onDelete={deleteNotification}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border bg-background p-6 text-sm text-muted-foreground">
+            Aucune notification AI pour le moment. Relance l’analyse pour générer
+            de nouvelles alertes.
+          </div>
+        )}
+      </div>
 
       {bootLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
