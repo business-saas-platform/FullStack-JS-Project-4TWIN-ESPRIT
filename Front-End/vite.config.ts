@@ -18,6 +18,14 @@ export default defineConfig({
     },
   },
 
+  // ADD THIS SECTION BELOW
+  server: {
+    allowedHosts: [
+      'gleaming-serenity-production.up.railway.app',
+      '.railway.app' // This covers you if the domain name changes slightly
+    ]
+  },
+
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
   test: {
