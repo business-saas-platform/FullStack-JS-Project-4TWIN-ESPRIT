@@ -3,7 +3,8 @@ const BASE = (() => {
     import.meta.env.VITE_API_URL ||
     import.meta.env.VITE_BACKEND_URL ||
     'https://esprit-pi-4twin5-2526-businesssaas-production-fb43.up.railway.app/api';
-  return raw;
+  const trimmed = raw.replace(/\/+$/, '');
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
 })();
 
 export function getToken() {
