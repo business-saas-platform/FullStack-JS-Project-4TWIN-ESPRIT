@@ -1,23 +1,23 @@
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
-import { useAuth } from "@/shared/contexts/AuthContext";
-import { Button } from "@/app/components/ui/button";
-import { Input } from "@/app/components/ui/input";
-import { Label } from "@/app/components/ui/label";
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { useAuth } from '@/shared/contexts/AuthContext';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
+import { Label } from '@/app/components/ui/label';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/app/components/ui/card";
+} from '@/app/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/app/components/ui/select";
+} from '@/app/components/ui/select';
 import {
   User,
   Shield,
@@ -31,65 +31,66 @@ import {
   Mail,
   BadgeCheck,
   Building2,
-} from "lucide-react";
+} from 'lucide-react';
 
 const API_BASE =
-  (import.meta as any).env?.VITE_API_URL || "http://localhost:3000/api";
+  (import.meta as any).env?.VITE_API_URL ||
+  'https://esprit-pi-4twin5-2526-businesssaas-production-fb43.up.railway.app/api';
 
 function authHeaders() {
-  const token = localStorage.getItem("access_token") ?? "";
+  const token = localStorage.getItem('access_token') ?? '';
   return {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
   };
 }
 
 async function apiPatch(path: string, body: object) {
   const res = await fetch(`${API_BASE}${path}`, {
-    method: "PATCH",
+    method: 'PATCH',
     headers: authHeaders(),
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Request failed");
+  if (!res.ok) throw new Error(data.message || 'Request failed');
   return data;
 }
 
 async function apiPost(path: string, body: object) {
   const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
+    method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Request failed");
+  if (!res.ok) throw new Error(data.message || 'Request failed');
   return data;
 }
 
 async function apiGet(path: string) {
   const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders() });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Request failed");
+  if (!res.ok) throw new Error(data.message || 'Request failed');
   return data;
 }
 
 function getInitials(name?: string) {
-  if (!name) return "U";
+  if (!name) return 'U';
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+  return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
 }
 
 function formatRole(role?: string) {
-  if (!role) return "User";
-  return role.replace(/_/g, " ");
+  if (!role) return 'User';
+  return role.replace(/_/g, ' ');
 }
 
 function fieldClass(hasError?: boolean) {
   return `h-11 rounded-2xl border ${
     hasError
-      ? "border-red-300 focus-visible:ring-red-200"
-      : "border-slate-200 focus-visible:ring-indigo-200"
+      ? 'border-red-300 focus-visible:ring-red-200'
+      : 'border-slate-200 focus-visible:ring-indigo-200'
   } bg-white`;
 }
 
@@ -98,10 +99,10 @@ function fieldClass(hasError?: boolean) {
 // ─────────────────────────────────────────────────────────
 function PasswordRules({ password }: { password: string }) {
   const rules = [
-    { label: "At least 8 characters", ok: password.length >= 8 },
-    { label: "One uppercase letter", ok: /[A-Z]/.test(password) },
-    { label: "One lowercase letter", ok: /[a-z]/.test(password) },
-    { label: "One number", ok: /[0-9]/.test(password) },
+    { label: 'At least 8 characters', ok: password.length >= 8 },
+    { label: 'One uppercase letter', ok: /[A-Z]/.test(password) },
+    { label: 'One lowercase letter', ok: /[a-z]/.test(password) },
+    { label: 'One number', ok: /[0-9]/.test(password) },
   ];
 
   return (
@@ -111,8 +112,8 @@ function PasswordRules({ password }: { password: string }) {
           key={r.label}
           className={`flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs ${
             r.ok
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-slate-200 bg-slate-50 text-slate-500"
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              : 'border-slate-200 bg-slate-50 text-slate-500'
           }`}
         >
           {r.ok ? (
@@ -131,24 +132,24 @@ function PasswordRules({ password }: { password: string }) {
 // PRESET SECURITY QUESTIONS
 // ─────────────────────────────────────────────────────────
 const PRESET_QUESTIONS = [
-  "What was the name of your first pet?",
-  "What city were you born in?",
+  'What was the name of your first pet?',
+  'What city were you born in?',
   "What is your mother's maiden name?",
-  "What was the name of your elementary school?",
-  "What was the make of your first car?",
-  "What is the middle name of your oldest sibling?",
-  "What street did you grow up on?",
-  "What was your childhood nickname?",
+  'What was the name of your elementary school?',
+  'What was the make of your first car?',
+  'What is the middle name of your oldest sibling?',
+  'What street did you grow up on?',
+  'What was your childhood nickname?',
 ];
 
-type Tab = "profile" | "password" | "security" | "account";
+type Tab = 'profile' | 'password' | 'security' | 'account';
 
 // ─────────────────────────────────────────────────────────
 // MAIN SETTINGS PAGE
 // ─────────────────────────────────────────────────────────
 export function Settings() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<Tab>("profile");
+  const [tab, setTab] = useState<Tab>('profile');
 
   const tabs: {
     id: Tab;
@@ -157,28 +158,28 @@ export function Settings() {
     description: string;
   }[] = [
     {
-      id: "profile",
-      label: "Personal Info",
+      id: 'profile',
+      label: 'Personal Info',
       icon: <User className="h-4 w-4" />,
-      description: "Manage your identity details",
+      description: 'Manage your identity details',
     },
     {
-      id: "password",
-      label: "Password",
+      id: 'password',
+      label: 'Password',
       icon: <Lock className="h-4 w-4" />,
-      description: "Update and secure your password",
+      description: 'Update and secure your password',
     },
     {
-      id: "security",
-      label: "Security Questions",
+      id: 'security',
+      label: 'Security Questions',
       icon: <Shield className="h-4 w-4" />,
-      description: "Recovery and verification setup",
+      description: 'Recovery and verification setup',
     },
     {
-      id: "account",
-      label: "Account Status",
+      id: 'account',
+      label: 'Account Status',
       icon: <Info className="h-4 w-4" />,
-      description: "Read-only account information",
+      description: 'Read-only account information',
     },
   ];
 
@@ -202,20 +203,19 @@ export function Settings() {
                   Settings
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 md:text-base">
-                  Gère ton profil, ton mot de passe, tes questions de sécurité
-                  et l’état de ton compte dans une interface plus propre et plus
-                  professionnelle.
+                  Gère ton profil, ton mot de passe, tes questions de sécurité et l’état de ton
+                  compte dans une interface plus propre et plus professionnelle.
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-3 pt-2">
                 <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/85">
                   <BadgeCheck className="h-4 w-4" />
-                  {user?.name || "User"}
+                  {user?.name || 'User'}
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/85">
                   <Mail className="h-4 w-4" />
-                  {user?.email || "No email"}
+                  {user?.email || 'No email'}
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/85">
                   <Building2 className="h-4 w-4" />
@@ -230,14 +230,10 @@ export function Settings() {
               </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-white">
-                  {user?.name || "Unknown user"}
+                  {user?.name || 'Unknown user'}
                 </p>
-                <p className="truncate text-xs text-white/70">
-                  {user?.email || "No email"}
-                </p>
-                <p className="mt-1 text-xs text-white/70 capitalize">
-                  {formatRole(user?.role)}
-                </p>
+                <p className="truncate text-xs text-white/70">{user?.email || 'No email'}</p>
+                <p className="mt-1 text-xs text-white/70 capitalize">{formatRole(user?.role)}</p>
               </div>
             </div>
           </div>
@@ -256,16 +252,14 @@ export function Settings() {
                 onClick={() => setTab(t.id)}
                 className={`group rounded-[24px] border p-4 text-left transition-all ${
                   active
-                    ? "border-indigo-200 bg-indigo-50 shadow-sm"
-                    : "border-slate-200 bg-white hover:bg-slate-50"
+                    ? 'border-indigo-200 bg-indigo-50 shadow-sm'
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div
                     className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
-                      active
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-100 text-slate-600"
+                      active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
                     }`}
                   >
                     {t.icon}
@@ -273,19 +267,13 @@ export function Settings() {
 
                   <ChevronRight
                     className={`h-4 w-4 transition-transform ${
-                      active
-                        ? "text-indigo-500"
-                        : "text-slate-400 group-hover:translate-x-0.5"
+                      active ? 'text-indigo-500' : 'text-slate-400 group-hover:translate-x-0.5'
                     }`}
                   />
                 </div>
 
                 <div className="mt-4">
-                  <h3
-                    className={`font-semibold ${
-                      active ? "text-indigo-700" : "text-slate-900"
-                    }`}
-                  >
+                  <h3 className={`font-semibold ${active ? 'text-indigo-700' : 'text-slate-900'}`}>
                     {t.label}
                   </h3>
                   <p className="mt-1 text-sm text-slate-500">{t.description}</p>
@@ -298,10 +286,10 @@ export function Settings() {
 
       {/* CONTENT */}
       <section>
-        {tab === "profile" && <ProfileSection />}
-        {tab === "password" && <PasswordSection />}
-        {tab === "security" && <SecurityQuestionsSection />}
-        {tab === "account" && <AccountStatusSection user={user} />}
+        {tab === 'profile' && <ProfileSection />}
+        {tab === 'password' && <PasswordSection />}
+        {tab === 'security' && <SecurityQuestionsSection />}
+        {tab === 'account' && <AccountStatusSection user={user} />}
       </section>
     </div>
   );
@@ -312,19 +300,19 @@ export function Settings() {
 // ─────────────────────────────────────────────────────────
 function ProfileSection() {
   const { user } = useAuth();
-  const [name, setName] = useState(user?.name ?? "");
-  const [email, setEmail] = useState(user?.email ?? "");
+  const [name, setName] = useState(user?.name ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!name.trim()) return toast.error("Name cannot be empty.");
+    if (!name.trim()) return toast.error('Name cannot be empty.');
     setLoading(true);
     try {
       await apiPatch(`/users/${user?.id}`, { name: name.trim() });
-      toast.success("Profile updated successfully!");
+      toast.success('Profile updated successfully!');
     } catch (err: any) {
-      toast.error(err.message || "Failed to update profile.");
+      toast.error(err.message || 'Failed to update profile.');
     } finally {
       setLoading(false);
     }
@@ -334,9 +322,7 @@ function ProfileSection() {
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
       <Card className="rounded-[30px] border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100 pb-5">
-          <CardTitle className="text-xl text-slate-900">
-            Personal Information
-          </CardTitle>
+          <CardTitle className="text-xl text-slate-900">Personal Information</CardTitle>
           <CardDescription>
             Update your displayed name and review your account identity.
           </CardDescription>
@@ -349,10 +335,8 @@ function ProfileSection() {
                 {getInitials(name)}
               </div>
               <div className="min-w-0">
-                <p className="truncate font-semibold text-slate-900">{name || "Unnamed user"}</p>
-                <p className="text-sm text-slate-500 capitalize">
-                  {formatRole(user?.role)}
-                </p>
+                <p className="truncate font-semibold text-slate-900">{name || 'Unnamed user'}</p>
+                <p className="text-sm text-slate-500 capitalize">{formatRole(user?.role)}</p>
                 <p className="truncate text-xs text-slate-400">{user?.email}</p>
               </div>
             </div>
@@ -389,7 +373,7 @@ function ProfileSection() {
                 aria-busy={loading}
                 className="h-11 rounded-2xl px-5"
               >
-                {loading ? "Saving..." : "Save Changes"}
+                {loading ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </form>
@@ -405,10 +389,10 @@ function ProfileSection() {
         </CardHeader>
 
         <CardContent className="space-y-4 p-6">
-          <InfoRow label="Display Name" value={name || "—"} />
-          <InfoRow label="Email" value={email || "—"} />
+          <InfoRow label="Display Name" value={name || '—'} />
+          <InfoRow label="Email" value={email || '—'} />
           <InfoRow label="Role" value={formatRole(user?.role)} />
-          <InfoRow label="User ID" value={user?.id || "—"} mono />
+          <InfoRow label="User ID" value={user?.id || '—'} mono />
         </CardContent>
       </Card>
     </div>
@@ -419,36 +403,33 @@ function ProfileSection() {
 // SECTION 2: Change Password
 // ─────────────────────────────────────────────────────────
 function PasswordSection() {
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const mismatch =
-    confirmPassword.length > 0 && newPassword !== confirmPassword;
+  const mismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!currentPassword)
-      return toast.error("Please enter your current password.");
+    if (!currentPassword) return toast.error('Please enter your current password.');
     if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(newPassword)) {
-      return toast.error("New password does not meet requirements.");
+      return toast.error('New password does not meet requirements.');
     }
-    if (newPassword !== confirmPassword)
-      return toast.error("Passwords do not match.");
+    if (newPassword !== confirmPassword) return toast.error('Passwords do not match.');
 
     setLoading(true);
     try {
-      await apiPost("/auth/change-password", {
+      await apiPost('/auth/change-password', {
         currentPassword,
         newPassword,
       });
-      toast.success("Password changed successfully!");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      toast.success('Password changed successfully!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (err: any) {
-      toast.error(err.message || "Failed to change password.");
+      toast.error(err.message || 'Failed to change password.');
     } finally {
       setLoading(false);
     }
@@ -458,9 +439,7 @@ function PasswordSection() {
     <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
       <Card className="rounded-[30px] border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100 pb-5">
-          <CardTitle className="text-xl text-slate-900">
-            Change Password
-          </CardTitle>
+          <CardTitle className="text-xl text-slate-900">Change Password</CardTitle>
           <CardDescription>
             Update your password securely using your current password.
           </CardDescription>
@@ -506,9 +485,7 @@ function PasswordSection() {
                 required
                 className={fieldClass(mismatch)}
               />
-              {mismatch && (
-                <p className="text-xs text-red-500">Passwords do not match.</p>
-              )}
+              {mismatch && <p className="text-xs text-red-500">Passwords do not match.</p>}
             </div>
 
             <div className="flex justify-end">
@@ -518,7 +495,7 @@ function PasswordSection() {
                 aria-busy={loading}
                 className="h-11 rounded-2xl px-5"
               >
-                {loading ? "Updating..." : "Update Password"}
+                {loading ? 'Updating...' : 'Update Password'}
               </Button>
             </div>
           </form>
@@ -528,9 +505,7 @@ function PasswordSection() {
       <Card className="rounded-[30px] border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100 pb-5">
           <CardTitle className="text-xl text-slate-900">Security Tips</CardTitle>
-          <CardDescription>
-            Quelques règles simples pour un mot de passe plus fort.
-          </CardDescription>
+          <CardDescription>Quelques règles simples pour un mot de passe plus fort.</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-3 p-6">
@@ -559,48 +534,39 @@ function PasswordSection() {
 // SECTION 3: Security Questions
 // ─────────────────────────────────────────────────────────
 function SecurityQuestionsSection() {
-  const [selected, setSelected] = useState(["", "", ""]);
-  const [answers, setAnswers] = useState(["", "", ""]);
+  const [selected, setSelected] = useState(['', '', '']);
+  const [answers, setAnswers] = useState(['', '', '']);
   const [loading, setLoading] = useState(false);
   const [hasExisting, setHasExisting] = useState(false);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    apiGet("/security-questions/status")
+    apiGet('/security-questions/status')
       .then((data) => setHasExisting(data.hasQuestions))
       .catch(() => {})
       .finally(() => setChecking(false));
   }, []);
 
   function availableFor(index: number) {
-    return PRESET_QUESTIONS.filter(
-      (q) => q === selected[index] || !selected.includes(q)
-    );
+    return PRESET_QUESTIONS.filter((q) => q === selected[index] || !selected.includes(q));
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (selected.some((q) => !q))
-      return toast.error("Please select all 3 questions.");
-    if (answers.some((a) => !a.trim()))
-      return toast.error("Please answer all 3 questions.");
-    if (new Set(selected).size < 3)
-      return toast.error("Please choose 3 different questions.");
+    if (selected.some((q) => !q)) return toast.error('Please select all 3 questions.');
+    if (answers.some((a) => !a.trim())) return toast.error('Please answer all 3 questions.');
+    if (new Set(selected).size < 3) return toast.error('Please choose 3 different questions.');
 
     setLoading(true);
     try {
-      await apiPost("/security-questions/setup", {
+      await apiPost('/security-questions/setup', {
         questions: selected.map((q, i) => ({ question: q, answer: answers[i] })),
       });
-      toast.success(
-        hasExisting
-          ? "Security questions updated!"
-          : "Security questions saved!"
-      );
+      toast.success(hasExisting ? 'Security questions updated!' : 'Security questions saved!');
       setHasExisting(true);
-      setAnswers(["", "", ""]);
+      setAnswers(['', '', '']);
     } catch (err: any) {
-      toast.error(err.message || "Failed to save questions.");
+      toast.error(err.message || 'Failed to save questions.');
     } finally {
       setLoading(false);
     }
@@ -609,9 +575,7 @@ function SecurityQuestionsSection() {
   if (checking) {
     return (
       <Card className="rounded-[30px] border-slate-200 shadow-sm">
-        <CardContent className="py-12 text-center text-sm text-slate-500">
-          Loading...
-        </CardContent>
+        <CardContent className="py-12 text-center text-sm text-slate-500">Loading...</CardContent>
       </Card>
     );
   }
@@ -620,13 +584,11 @@ function SecurityQuestionsSection() {
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
       <Card className="rounded-[30px] border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100 pb-5">
-          <CardTitle className="text-xl text-slate-900">
-            Security Questions
-          </CardTitle>
+          <CardTitle className="text-xl text-slate-900">Security Questions</CardTitle>
           <CardDescription>
             {hasExisting
-              ? "Your security questions are already configured. You can update them below."
-              : "Set up 3 security questions to help recover your account."}
+              ? 'Your security questions are already configured. You can update them below.'
+              : 'Set up 3 security questions to help recover your account.'}
           </CardDescription>
 
           {hasExisting && (
@@ -640,14 +602,9 @@ function SecurityQuestionsSection() {
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6" noValidate>
             {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4"
-              >
+              <div key={i} className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
                 <div className="mb-3">
-                  <Label className="text-sm font-semibold text-slate-900">
-                    Question {i + 1}
-                  </Label>
+                  <Label className="text-sm font-semibold text-slate-900">Question {i + 1}</Label>
                 </div>
 
                 <div className="space-y-3">
@@ -695,11 +652,7 @@ function SecurityQuestionsSection() {
                 aria-busy={loading}
                 className="h-11 rounded-2xl px-5"
               >
-                {loading
-                  ? "Saving..."
-                  : hasExisting
-                  ? "Update Questions"
-                  : "Save Questions"}
+                {loading ? 'Saving...' : hasExisting ? 'Update Questions' : 'Save Questions'}
               </Button>
             </div>
           </form>
@@ -741,30 +694,26 @@ function SecurityQuestionsSection() {
 // ─────────────────────────────────────────────────────────
 function AccountStatusSection({ user }: { user: any }) {
   const statusItems = [
-    { label: "User ID", value: user?.id ?? "—", mono: true },
-    { label: "Role", value: formatRole(user?.role) ?? "—" },
-    { label: "Business ID", value: user?.businessId ?? "No business linked", mono: true },
+    { label: 'User ID', value: user?.id ?? '—', mono: true },
+    { label: 'Role', value: formatRole(user?.role) ?? '—' },
+    { label: 'Business ID', value: user?.businessId ?? 'No business linked', mono: true },
     {
-      label: "Account Status",
+      label: 'Account Status',
       value:
         user?.lockedUntil && new Date(user.lockedUntil) > new Date()
           ? `Locked until ${new Date(user.lockedUntil).toLocaleTimeString()}`
-          : "Active",
+          : 'Active',
       highlight:
-        user?.lockedUntil && new Date(user.lockedUntil) > new Date()
-          ? "warning"
-          : "success",
+        user?.lockedUntil && new Date(user.lockedUntil) > new Date() ? 'warning' : 'success',
     },
     {
-      label: "Password Change Required",
-      value: user?.mustChangePassword ? "Yes" : "No",
-      highlight: user?.mustChangePassword ? "warning" : "success",
+      label: 'Password Change Required',
+      value: user?.mustChangePassword ? 'Yes' : 'No',
+      highlight: user?.mustChangePassword ? 'warning' : 'success',
     },
     {
-      label: "Member Since",
-      value: user?.createdAt
-        ? new Date(user.createdAt).toLocaleDateString()
-        : "—",
+      label: 'Member Since',
+      value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—',
     },
   ];
 
@@ -773,9 +722,7 @@ function AccountStatusSection({ user }: { user: any }) {
       <Card className="rounded-[30px] border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100 pb-5">
           <CardTitle className="text-xl text-slate-900">Account Status</CardTitle>
-          <CardDescription>
-            Read-only overview of your account metadata.
-          </CardDescription>
+          <CardDescription>Read-only overview of your account metadata.</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-3 p-6">
@@ -784,27 +731,21 @@ function AccountStatusSection({ user }: { user: any }) {
               key={item.label}
               className="flex flex-col gap-2 rounded-[22px] border border-slate-200 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"
             >
-              <span className="text-sm font-medium text-slate-500">
-                {item.label}
-              </span>
+              <span className="text-sm font-medium text-slate-500">{item.label}</span>
 
               <span
                 className={`max-w-full break-all text-sm sm:max-w-[60%] sm:text-right ${
-                  item.mono ? "font-mono text-xs" : "font-medium"
+                  item.mono ? 'font-mono text-xs' : 'font-medium'
                 } ${
-                  item.highlight === "success"
-                    ? "text-emerald-600"
-                    : item.highlight === "warning"
-                    ? "text-amber-600"
-                    : "text-slate-900"
+                  item.highlight === 'success'
+                    ? 'text-emerald-600'
+                    : item.highlight === 'warning'
+                      ? 'text-amber-600'
+                      : 'text-slate-900'
                 }`}
               >
-                {item.highlight === "success" && (
-                  <CheckCircle2 className="mr-1 inline h-4 w-4" />
-                )}
-                {item.highlight === "warning" && (
-                  <AlertTriangle className="mr-1 inline h-4 w-4" />
-                )}
+                {item.highlight === 'success' && <CheckCircle2 className="mr-1 inline h-4 w-4" />}
+                {item.highlight === 'warning' && <AlertTriangle className="mr-1 inline h-4 w-4" />}
                 {item.value}
               </span>
             </div>
@@ -815,9 +756,7 @@ function AccountStatusSection({ user }: { user: any }) {
       <Card className="rounded-[30px] border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100 pb-5">
           <CardTitle className="text-xl text-slate-900">Account Summary</CardTitle>
-          <CardDescription>
-            Petit résumé visuel de ton état actuel.
-          </CardDescription>
+          <CardDescription>Petit résumé visuel de ton état actuel.</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-3 p-6">
@@ -829,13 +768,13 @@ function AccountStatusSection({ user }: { user: any }) {
           <TipBox
             icon={<Info className="h-4 w-4" />}
             title="Business Link"
-            text={user?.businessId || "No business linked"}
+            text={user?.businessId || 'No business linked'}
             mono
           />
           <TipBox
             icon={<User className="h-4 w-4" />}
             title="Account Identifier"
-            text={user?.id || "—"}
+            text={user?.id || '—'}
             mono
           />
         </CardContent>
@@ -847,21 +786,13 @@ function AccountStatusSection({ user }: { user: any }) {
 // ─────────────────────────────────────────────────────────
 // SMALL UI HELPERS
 // ─────────────────────────────────────────────────────────
-function InfoRow({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+function InfoRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex flex-col gap-2 rounded-[22px] border border-slate-200 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
       <span className="text-sm font-medium text-slate-500">{label}</span>
       <span
         className={`max-w-full break-all text-sm text-slate-900 sm:max-w-[60%] sm:text-right ${
-          mono ? "font-mono text-xs" : "font-medium"
+          mono ? 'font-mono text-xs' : 'font-medium'
         }`}
       >
         {value}
@@ -889,11 +820,7 @@ function TipBox({
         </div>
         <div className="min-w-0">
           <p className="font-medium text-slate-900">{title}</p>
-          <p
-            className={`mt-1 text-sm text-slate-500 ${
-              mono ? "break-all font-mono text-xs" : ""
-            }`}
-          >
+          <p className={`mt-1 text-sm text-slate-500 ${mono ? 'break-all font-mono text-xs' : ''}`}>
             {text}
           </p>
         </div>

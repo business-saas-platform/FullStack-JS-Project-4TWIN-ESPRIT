@@ -3,20 +3,20 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-} from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { randomUUID } from "crypto";
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { randomUUID } from 'crypto';
 
-import { TeamMemberEntity } from "./entities/team-member.entity";
-import { TeamInvitationEntity } from "./entities/team-invitation.entity";
-import { BusinessEntity } from "../businesses/entities/business.entity";
+import { TeamMemberEntity } from './entities/team-member.entity';
+import { TeamInvitationEntity } from './entities/team-invitation.entity';
+import { BusinessEntity } from '../businesses/entities/business.entity';
 
-import { CreateTeamMemberDto } from "./dto/create-team-member.dto";
-import { UpdateTeamMemberDto } from "./dto/update-team-member.dto";
-import { InviteTeamMemberDto } from "./dto/invite-team-member.dto";
+import { CreateTeamMemberDto } from './dto/create-team-member.dto';
+import { UpdateTeamMemberDto } from './dto/update-team-member.dto';
+import { InviteTeamMemberDto } from './dto/invite-team-member.dto';
 
-import { MailService } from "../mail/mail.service";
+import { MailService } from '../mail/mail.service';
 
 type JwtUser = {
   sub: string;
@@ -45,7 +45,7 @@ export class TeamMembersService {
   // HELPERS
   // =============================
   private normalizeEmail(email: string) {
-    return (email || "").trim().toLowerCase();
+    return (email || '').trim().toLowerCase();
   }
 
   private async assertOwnerOwnsBusiness(ownerId: string, businessId: string) {
@@ -57,9 +57,9 @@ export class TeamMembersService {
   }
 
   private async assertUserHasAccess(user: JwtUser, businessId: string) {
-    if (user.role === "platform_admin") return true;
+    if (user.role === 'platform_admin') return true;
 
-    if (user.role === "business_owner") {
+    if (user.role === 'business_owner') {
       await this.assertOwnerOwnsBusiness(user.sub, businessId);
       return true;
     }
@@ -67,7 +67,7 @@ export class TeamMembersService {
     const m = await this.membersRepo.findOne({
       where: { businessId, email: this.normalizeEmail(user.email) },
     });
-    if (!m) throw new ForbiddenException("No access to this business");
+    if (!m) throw new ForbiddenException('No access to this business');
     return true;
   }
 
@@ -75,10 +75,10 @@ export class TeamMembersService {
   // INVITE (owner-only)
   // =============================
   async inviteForOwner(user: JwtUser, dto: InviteTeamMemberDto) {
-    if (!dto.businessId) throw new BadRequestException("businessId is required");
-    if (!dto.email) throw new BadRequestException("email is required");
-    if (!dto.name) throw new BadRequestException("name is required");
-    if (!dto.role) throw new BadRequestException("role is required");
+    if (!dto.businessId) throw new BadRequestException('businessId is required');
+    if (!dto.email) throw new BadRequestException('email is required');
+    if (!dto.name) throw new BadRequestException('name is required');
+    if (!dto.role) throw new BadRequestException('role is required');
 
     // ✅ owner check + get business name
     const business = await this.assertOwnerOwnsBusiness(user.sub, dto.businessId);
@@ -87,8 +87,8 @@ export class TeamMembersService {
 
     // ✅ revoke old pending invites for same business+email
     await this.invitesRepo.update(
-      { businessId: dto.businessId, email, status: "pending" as any },
-      { status: "revoked" as any }
+      { businessId: dto.businessId, email, status: 'pending' as any },
+      { status: 'revoked' as any }
     );
 
     const token = randomUUID();
@@ -103,7 +103,7 @@ export class TeamMembersService {
       permissions: dto.permissions ?? [],
       token,
       expiresAt,
-      status: "pending",
+      status: 'pending',
     } as Partial<TeamInvitationEntity>);
 
     const savedInvitation = await this.invitesRepo.save(invitation);
@@ -121,16 +121,15 @@ export class TeamMembersService {
         name: dto.name.trim(),
         email,
         role: dto.role as any,
-        status: "invited",
+        status: 'invited',
         permissions: dto.permissions ?? [],
         joinedAt: null, // ✅ invited => null
       });
     } else {
       existingMember.name = dto.name.trim();
       existingMember.role = dto.role as any;
-      existingMember.status = "invited";
-      existingMember.permissions =
-        dto.permissions ?? existingMember.permissions ?? [];
+      existingMember.status = 'invited';
+      existingMember.permissions = dto.permissions ?? existingMember.permissions ?? [];
       existingMember.joinedAt = existingMember.joinedAt ?? null;
 
       memberEntity = existingMember;
@@ -139,7 +138,7 @@ export class TeamMembersService {
     const savedMember = await this.membersRepo.save(memberEntity);
 
     const inviteLink =
-      `${process.env.FRONTEND_URL || "http://localhost:5173"}` +
+      `${process.env.FRONTEND_URL || 'https://gleaming-serenity-production.up.railway.app'}` +
       `/auth/accept-invite?token=${encodeURIComponent(token)}`;
 
     // ✅ send invite email (role + permissions)
@@ -147,14 +146,14 @@ export class TeamMembersService {
       await this.mailService.sendInviteEmail({
         to: email,
         name: dto.name.trim(),
-        businessName: (business as any).name || "Your Business",
+        businessName: (business as any).name || 'Your Business',
         inviterEmail: user.email,
         inviteLink,
         role: dto.role,
         permissions: dto.permissions ?? [],
       });
     } catch (e: any) {
-      console.log("Invite email failed:", e?.message || e);
+      console.log('Invite email failed:', e?.message || e);
     }
 
     return {
@@ -168,7 +167,7 @@ export class TeamMembersService {
   // OWNER-ONLY direct create member
   // =============================
   async createForOwner(user: JwtUser, dto: CreateTeamMemberDto) {
-    if (!dto.businessId) throw new BadRequestException("businessId is required");
+    if (!dto.businessId) throw new BadRequestException('businessId is required');
     await this.assertOwnerOwnsBusiness(user.sub, dto.businessId);
 
     const email = this.normalizeEmail(dto.email);
@@ -176,12 +175,12 @@ export class TeamMembersService {
     const exists = await this.membersRepo.findOne({
       where: { businessId: dto.businessId, email },
     });
-    if (exists) throw new BadRequestException("Member already exists for this business");
+    if (exists) throw new BadRequestException('Member already exists for this business');
 
     const entity = this.membersRepo.create({
       ...dto,
       email,
-      status: (dto as any).status ?? "active",
+      status: (dto as any).status ?? 'active',
       permissions: (dto as any).permissions ?? [],
       joinedAt: new Date(), // ✅ active now
     } as any);
@@ -191,7 +190,7 @@ export class TeamMembersService {
 
   async updateForOwner(user: JwtUser, id: string, dto: UpdateTeamMemberDto) {
     const m = await this.membersRepo.findOne({ where: { id } });
-    if (!m) throw new NotFoundException("Team member not found");
+    if (!m) throw new NotFoundException('Team member not found');
 
     await this.assertOwnerOwnsBusiness(user.sub, m.businessId);
 
@@ -207,7 +206,7 @@ export class TeamMembersService {
 
   async removeForOwner(user: JwtUser, id: string) {
     const m = await this.membersRepo.findOne({ where: { id } });
-    if (!m) throw new NotFoundException("Team member not found");
+    if (!m) throw new NotFoundException('Team member not found');
 
     await this.assertOwnerOwnsBusiness(user.sub, m.businessId);
 
@@ -219,19 +218,19 @@ export class TeamMembersService {
   // READ actions
   // =============================
   async findAllForUser(user: JwtUser, businessId?: string) {
-    if (!businessId) throw new BadRequestException("businessId query param is required");
+    if (!businessId) throw new BadRequestException('businessId query param is required');
 
     await this.assertUserHasAccess(user, businessId);
 
     return this.membersRepo.find({
       where: { businessId },
-      order: { createdAt: "DESC" as any },
+      order: { createdAt: 'DESC' as any },
     });
   }
 
   async findOneForUser(user: JwtUser, id: string) {
     const m = await this.membersRepo.findOne({ where: { id } });
-    if (!m) throw new NotFoundException("Team member not found");
+    if (!m) throw new NotFoundException('Team member not found');
 
     await this.assertUserHasAccess(user, m.businessId);
     return m;

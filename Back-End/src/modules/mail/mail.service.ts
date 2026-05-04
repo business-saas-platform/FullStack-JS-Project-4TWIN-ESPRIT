@@ -1,5 +1,5 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
-import * as nodemailer from "nodemailer";
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import * as nodemailer from 'nodemailer';
 
 // =====================================================
 // TYPES
@@ -51,7 +51,7 @@ export class MailService {
 
   constructor() {
     this.transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST || "smtp.gmail.com",
+      host: process.env.MAIL_HOST || 'smtp.gmail.com',
       port: Number(process.env.MAIL_PORT || 587),
       secure: false, // true فقط مع port 465
       auth: {
@@ -70,7 +70,7 @@ export class MailService {
       return { ok: true };
     } catch (err: any) {
       throw new InternalServerErrorException(
-        `SMTP verify failed: ${err?.message || "Unknown error"}`
+        `SMTP verify failed: ${err?.message || 'Unknown error'}`
       );
     }
   }
@@ -79,16 +79,13 @@ export class MailService {
   // INVITE TEMPLATE (✅ includes role + permissions)
   // =====================================================
   private buildInviteTemplate(params: InviteEmailParams) {
-    const { name, businessName, inviterEmail, inviteLink, role, permissions } =
-      params;
+    const { name, businessName, inviterEmail, inviteLink, role, permissions } = params;
     const year = new Date().getFullYear();
 
     const permsHtml =
       permissions && permissions.length
         ? `<ul style="margin:10px 0 0;padding-left:18px;color:#374151;font-size:14px;line-height:1.7;">
-             ${permissions
-               .map((p) => `<li>${this.escapeHtml(p)}</li>`)
-               .join("")}
+             ${permissions.map((p) => `<li>${this.escapeHtml(p)}</li>`).join('')}
            </ul>`
         : `<p style="margin:8px 0 0;font-size:14px;color:#6b7280;"><i>Aucune permission spécifique</i></p>`;
 
@@ -128,9 +125,7 @@ export class MailService {
 
               <p style="margin:0 0 12px;font-size:15px;line-height:1.7;color:#374151;">
                 <b>${this.escapeHtml(inviterEmail)}</b> vous a invité à rejoindre l’équipe de
-                <b style="color:#4f46e5;">${this.escapeHtml(
-                  businessName
-                )}</b> sur notre plateforme.
+                <b style="color:#4f46e5;">${this.escapeHtml(businessName)}</b> sur notre plateforme.
               </p>
 
               <!-- ✅ role + permissions -->
@@ -200,7 +195,7 @@ export class MailService {
     const safeLoginUrl =
       loginUrl ||
       process.env.APP_LOGIN_URL ||
-      "http://localhost:5173/auth/login";
+      'https://gleaming-serenity-production.up.railway.app/auth/login';
 
     return `
 <!DOCTYPE html>
@@ -386,7 +381,7 @@ export class MailService {
     const safeLoginUrl =
       loginUrl ||
       process.env.APP_LOGIN_URL ||
-      "http://localhost:5173/auth/login";
+      'https://gleaming-serenity-production.up.railway.app/auth/login';
 
     return `
 <!DOCTYPE html>
@@ -488,11 +483,11 @@ export class MailService {
   // =====================================================
   private escapeHtml(input: string) {
     return String(input)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   // =====================================================
@@ -512,7 +507,7 @@ export class MailService {
       return { ok: true };
     } catch (err: any) {
       throw new InternalServerErrorException(
-        `Invite email failed: ${err?.message || "Unknown error"}`
+        `Invite email failed: ${err?.message || 'Unknown error'}`
       );
     }
   }
@@ -531,7 +526,7 @@ export class MailService {
       return { ok: true };
     } catch (err: any) {
       throw new InternalServerErrorException(
-        `Owner approved email failed: ${err?.message || "Unknown error"}`
+        `Owner approved email failed: ${err?.message || 'Unknown error'}`
       );
     }
   }
@@ -550,7 +545,7 @@ export class MailService {
       return { ok: true };
     } catch (err: any) {
       throw new InternalServerErrorException(
-        `Owner rejected email failed: ${err?.message || "Unknown error"}`
+        `Owner rejected email failed: ${err?.message || 'Unknown error'}`
       );
     }
   }
@@ -569,7 +564,7 @@ export class MailService {
       return { ok: true };
     } catch (err: any) {
       throw new InternalServerErrorException(
-        `Employee created email failed: ${err?.message || "Unknown error"}`
+        `Employee created email failed: ${err?.message || 'Unknown error'}`
       );
     }
   }

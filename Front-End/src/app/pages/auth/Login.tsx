@@ -1,37 +1,28 @@
-import React, { useMemo, useState } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
-import { Button } from "@/app/components/ui/button";
-import { Input } from "@/app/components/ui/input";
-import { Label } from "@/app/components/ui/label";
+import React, { useMemo, useState } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
+import { Label } from '@/app/components/ui/label';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/app/components/ui/card";
-import { toast } from "sonner";
-import { Turnstile } from "@marsidev/react-turnstile";
-import {
-  Github,
-  Eye,
-  EyeOff,
-  Loader2,
-  Lock,
-  Mail,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+} from '@/app/components/ui/card';
+import { toast } from 'sonner';
+import { Turnstile } from '@marsidev/react-turnstile';
+import { Github, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
 
-import { useAuth } from "@/shared/contexts/AuthContext";
+import { useAuth } from '@/shared/contexts/AuthContext';
 
 type Role =
-  | "platform_admin"
-  | "business_owner"
-  | "business_admin"
-  | "accountant"
-  | "team_member"
-  | "client"
+  | 'platform_admin'
+  | 'business_owner'
+  | 'business_admin'
+  | 'accountant'
+  | 'team_member'
+  | 'client'
   | string;
 
 type LocationState = {
@@ -70,10 +61,10 @@ const GoogleIcon = () => (
 function getErrorMessage(err: any): string {
   const message = err?.response?.data?.message || err?.message;
 
-  if (Array.isArray(message)) return message.join(", ");
-  if (typeof message === "string") return message;
+  if (Array.isArray(message)) return message.join(', ');
+  if (typeof message === 'string') return message;
 
-  return "Invalid credentials";
+  return 'Invalid credentials';
 }
 
 function isValidEmail(email: string) {
@@ -81,8 +72,8 @@ function isValidEmail(email: string) {
 }
 
 function getRedirectPath(role?: Role, from?: string) {
-  if (role === "platform_admin") return "/admin";
-  return from || "/dashboard";
+  if (role === 'platform_admin') return '/admin';
+  return from || '/dashboard';
 }
 
 export function Login() {
@@ -92,55 +83,54 @@ export function Login() {
 
   const { login } = useAuth();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<"google" | "github" | null>(
-    null
-  );
+  const [oauthLoading, setOauthLoading] = useState<'google' | 'github' | null>(null);
 
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [formError, setFormError] = useState("");
+  const [formError, setFormError] = useState('');
   const [emailTouched, setEmailTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
 
-  const siteKey = useMemo(
-    () => import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined,
-    []
-  );
+  const siteKey = useMemo(() => import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined, []);
 
-  const backendUrl = useMemo(
-    () => import.meta.env.VITE_BACKEND_URL || "http://localhost:3000/api",
-    []
-  );
+  const backendUrl = useMemo(() => {
+    const raw =
+      import.meta.env.VITE_API_URL ||
+      import.meta.env.VITE_BACKEND_URL ||
+      'https://esprit-pi-4twin5-2526-businesssaas-production-fb43.up.railway.app';
+    const trimmed = raw.replace(/\/+$/, '');
+    return trimmed.replace(/\/api$/, '');
+  }, []);
 
   const isSubmitting = loading || oauthLoading !== null;
   const cleanEmail = email.trim().toLowerCase();
 
   const from = state?.from;
-  const fromPath = typeof from === "string" ? from : from?.pathname;
+  const fromPath = typeof from === 'string' ? from : from?.pathname;
 
   const emailError =
     emailTouched && cleanEmail && !isValidEmail(cleanEmail)
-      ? "Please enter a valid email address."
-      : "";
+      ? 'Please enter a valid email address.'
+      : '';
 
   const passwordError =
     passwordTouched && password && password.length < 6
-      ? "Password must contain at least 6 characters."
-      : "";
+      ? 'Password must contain at least 6 characters.'
+      : '';
 
-  const startOAuth = (provider: "google" | "github") => {
+  const startOAuth = (provider: 'google' | 'github') => {
     try {
-      setFormError("");
+      setFormError('');
       setOauthLoading(provider);
-      window.location.href = `${backendUrl}/auth/${provider}`;
+      window.location.href = `${backendUrl}/api/auth/${provider}`;
     } catch {
       setOauthLoading(null);
-      toast.error("OAuth error", {
+      toast.error('OAuth error', {
         description: `Unable to start ${provider} authentication.`,
       });
     }
@@ -148,22 +138,22 @@ export function Login() {
 
   const validateForm = () => {
     if (!cleanEmail || !password) {
-      return "Please enter your email and password.";
+      return 'Please enter your email and password.';
     }
 
     if (!isValidEmail(cleanEmail)) {
-      return "Please enter a valid email address.";
+      return 'Please enter a valid email address.';
     }
 
     if (password.length < 6) {
-      return "Password must contain at least 6 characters.";
+      return 'Password must contain at least 6 characters.';
     }
 
     if (!captchaToken) {
-      return "Please verify that you are human.";
+      return 'Please verify that you are human.';
     }
 
-    return "";
+    return '';
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -171,12 +161,12 @@ export function Login() {
 
     setEmailTouched(true);
     setPasswordTouched(true);
-    setFormError("");
+    setFormError('');
 
     const validationError = validateForm();
     if (validationError) {
       setFormError(validationError);
-      toast.error("Validation error", {
+      toast.error('Validation error', {
         description: validationError,
       });
       return;
@@ -186,41 +176,37 @@ export function Login() {
       setLoading(true);
 
       if (rememberMe) {
-        localStorage.setItem("remembered_email", cleanEmail);
+        localStorage.setItem('remembered_email', cleanEmail);
       } else {
-        localStorage.removeItem("remembered_email");
+        localStorage.removeItem('remembered_email');
       }
 
-      const result = (await login(
-        cleanEmail,
-        password,
-        captchaToken as string
-      )) as LoginResult;
+      const result = (await login(cleanEmail, password, captchaToken as string)) as LoginResult;
 
       const user = result?.user;
       const mustChangePassword = !!result?.mustChangePassword;
 
       if (!user) {
-        toast.error("Login failed", {
-          description: "User information was not returned by the server.",
+        toast.error('Login failed', {
+          description: 'User information was not returned by the server.',
         });
         return;
       }
 
       if (mustChangePassword) {
-        toast.info("First login detected", {
-          description: "Please change your password before continuing.",
+        toast.info('First login detected', {
+          description: 'Please change your password before continuing.',
         });
 
-        navigate("/auth/force-change-password", {
+        navigate('/auth/force-change-password', {
           replace: true,
-          state: { from: fromPath || "/dashboard" },
+          state: { from: fromPath || '/dashboard' },
         });
         return;
       }
 
-      toast.success("Login successful", {
-        description: "Welcome back to your workspace.",
+      toast.success('Login successful', {
+        description: 'Welcome back to your workspace.',
       });
 
       navigate(getRedirectPath(user.role, fromPath), { replace: true });
@@ -228,23 +214,22 @@ export function Login() {
       const msg = getErrorMessage(err);
       const normalized = String(msg).toLowerCase();
 
-      if (normalized.includes("locked")) {
-        toast.error("Account locked", {
-          description:
-            "Too many failed attempts. Your account is locked for 1 hour.",
+      if (normalized.includes('locked')) {
+        toast.error('Account locked', {
+          description: 'Too many failed attempts. Your account is locked for 1 hour.',
         });
-        setFormError("Your account is temporarily locked for 1 hour.");
+        setFormError('Your account is temporarily locked for 1 hour.');
       } else if (
-        normalized.includes("invalid credentials") ||
-        normalized.includes("unauthorized") ||
-        normalized.includes("wrong password")
+        normalized.includes('invalid credentials') ||
+        normalized.includes('unauthorized') ||
+        normalized.includes('wrong password')
       ) {
-        toast.error("Login failed", {
-          description: "Incorrect email or password.",
+        toast.error('Login failed', {
+          description: 'Incorrect email or password.',
         });
-        setFormError("Incorrect email or password.");
+        setFormError('Incorrect email or password.');
       } else {
-        toast.error("Login failed", {
+        toast.error('Login failed', {
           description: msg,
         });
         setFormError(msg);
@@ -257,7 +242,7 @@ export function Login() {
   };
 
   React.useEffect(() => {
-    const savedEmail = localStorage.getItem("remembered_email");
+    const savedEmail = localStorage.getItem('remembered_email');
     if (savedEmail) {
       setEmail(savedEmail);
       setRememberMe(true);
@@ -282,8 +267,7 @@ export function Login() {
           </CardTitle>
 
           <CardDescription className="mt-2 text-sm leading-6 text-slate-500">
-            Sign in to access your business workspace and manage your operations
-            securely.
+            Sign in to access your business workspace and manage your operations securely.
           </CardDescription>
         </div>
       </CardHeader>
@@ -294,10 +278,10 @@ export function Login() {
             type="button"
             variant="outline"
             className="h-11 w-full rounded-xl border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
-            onClick={() => startOAuth("google")}
+            onClick={() => startOAuth('google')}
             disabled={isSubmitting}
           >
-            {oauthLoading === "google" ? (
+            {oauthLoading === 'google' ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <span className="mr-2">
@@ -311,10 +295,10 @@ export function Login() {
             type="button"
             variant="outline"
             className="h-11 w-full rounded-xl border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
-            onClick={() => startOAuth("github")}
+            onClick={() => startOAuth('github')}
             disabled={isSubmitting}
           >
-            {oauthLoading === "github" ? (
+            {oauthLoading === 'github' ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Github className="mr-2 h-4 w-4" />
@@ -328,9 +312,7 @@ export function Login() {
             <div className="w-full border-t border-slate-200" />
           </div>
           <div className="relative flex justify-center text-[11px] uppercase tracking-[0.2em]">
-            <span className="bg-white px-3 text-slate-400">
-              Or continue with email
-            </span>
+            <span className="bg-white px-3 text-slate-400">Or continue with email</span>
           </div>
         </div>
 
@@ -348,7 +330,7 @@ export function Login() {
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
-                  if (formError) setFormError("");
+                  if (formError) setFormError('');
                 }}
                 onBlur={() => setEmailTouched(true)}
                 placeholder="you@company.com"
@@ -359,17 +341,12 @@ export function Login() {
               />
             </div>
 
-            {emailError && (
-              <p className="text-xs font-medium text-red-500">{emailError}</p>
-            )}
+            {emailError && <p className="text-xs font-medium text-red-500">{emailError}</p>}
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <Label
-                htmlFor="password"
-                className="text-sm font-medium text-slate-700"
-              >
+              <Label htmlFor="password" className="text-sm font-medium text-slate-700">
                 Password
               </Label>
 
@@ -385,11 +362,11 @@ export function Login() {
               <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 id="password"
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
-                  if (formError) setFormError("");
+                  if (formError) setFormError('');
                 }}
                 onBlur={() => setPasswordTouched(true)}
                 placeholder="Enter your password"
@@ -401,22 +378,16 @@ export function Login() {
 
               <button
                 type="button"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
                 onClick={() => setShowPassword((prev) => !prev)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                 disabled={isSubmitting}
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
 
-            {passwordError && (
-              <p className="text-xs font-medium text-red-500">{passwordError}</p>
-            )}
+            {passwordError && <p className="text-xs font-medium text-red-500">{passwordError}</p>}
           </div>
 
           <div className="flex items-center justify-between gap-3">
@@ -431,9 +402,7 @@ export function Login() {
               Remember me
             </label>
 
-            <span className="text-xs text-slate-400">
-              Protected by Turnstile
-            </span>
+            <span className="text-xs text-slate-400">Protected by Turnstile</span>
           </div>
 
           {siteKey ? (
@@ -443,14 +412,14 @@ export function Login() {
                 onSuccess={(token) => setCaptchaToken(token)}
                 onError={() => setCaptchaToken(null)}
                 onExpire={() => setCaptchaToken(null)}
-                options={{ theme: "light" }}
+                options={{ theme: 'light' }}
               />
             </div>
           ) : (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-700">
-              CAPTCHA is not configured. Add{" "}
-              <span className="font-semibold">VITE_TURNSTILE_SITE_KEY</span> in
-              your environment variables.
+              CAPTCHA is not configured. Add{' '}
+              <span className="font-semibold">VITE_TURNSTILE_SITE_KEY</span> in your environment
+              variables.
             </div>
           )}
 
@@ -471,12 +440,12 @@ export function Login() {
                 Signing in...
               </>
             ) : (
-              "Sign In"
+              'Sign In'
             )}
           </Button>
 
           <div className="text-center text-sm text-slate-500">
-            Don&apos;t have an account?{" "}
+            Don&apos;t have an account?{' '}
             <Link
               to="/auth/register"
               className="font-semibold text-primary transition hover:underline"

@@ -1,16 +1,19 @@
-const BASE =
-  import.meta.env.VITE_API_URL ||
-  import.meta.env.VITE_BACKEND_URL ||
-  "http://localhost:3000/api";
+const BASE = (() => {
+  const raw =
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_BACKEND_URL ||
+    'https://esprit-pi-4twin5-2526-businesssaas-production-fb43.up.railway.app/api';
+  return raw;
+})();
 
 export function getToken() {
-  return localStorage.getItem("access_token");
+  return localStorage.getItem('access_token');
 }
 
 function getBusinessId(): string | null {
-  const raw = localStorage.getItem("current_business_id");
+  const raw = localStorage.getItem('current_business_id');
   if (!raw) return null;
-  if (raw === "null" || raw === "undefined") return null;
+  if (raw === 'null' || raw === 'undefined') return null;
   const trimmed = raw.trim();
   return trimmed.length ? trimmed : null;
 }
@@ -30,7 +33,7 @@ function normalizeHeaders(h?: Record<string, string> | Headers) {
   return h;
 }
 
-function buildUrl(path: string, query?: ApiOptions["query"]) {
+function buildUrl(path: string, query?: ApiOptions['query']) {
   const url = new URL(`${BASE}${path}`);
   if (query) {
     Object.entries(query).forEach(([k, v]) => {
@@ -48,14 +51,13 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   const extraHeaders = normalizeHeaders(options.headers);
 
   const hasBody = options.body !== undefined && options.body !== null;
-  const isFormData =
-    typeof FormData !== "undefined" && options.body instanceof FormData;
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
   const headers: Record<string, string> = {
     ...extraHeaders,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(businessId ? { "x-business-id": businessId } : {}),
-    ...(hasBody && !isFormData ? { "Content-Type": "application/json" } : {}),
+    ...(businessId ? { 'x-business-id': businessId } : {}),
+    ...(hasBody && !isFormData ? { 'Content-Type': 'application/json' } : {}),
   };
 
   // ✅ IMPORTANT: use buildUrl (query support)
@@ -66,8 +68,8 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
     headers,
   });
 
-  const contentType = res.headers.get("content-type") || "";
-  const isJson = contentType.includes("application/json");
+  const contentType = res.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
 
   let data: any = null;
   if (res.status !== 204) {
@@ -81,8 +83,8 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     if (data) {
-      if (typeof data === "string") msg = data;
-      else if (Array.isArray(data?.message)) msg = data.message.join(", ");
+      if (typeof data === 'string') msg = data;
+      else if (Array.isArray(data?.message)) msg = data.message.join(', ');
       else if (data?.message) msg = data.message;
       else if (data?.error) msg = data.error;
     }
@@ -92,19 +94,19 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   return (data ?? undefined) as T;
 }
 
-export const apiGet = <T>(path: string, query?: ApiOptions["query"]) =>
-  api<T>(path, { method: "GET", query });
+export const apiGet = <T>(path: string, query?: ApiOptions['query']) =>
+  api<T>(path, { method: 'GET', query });
 
 export const apiPost = <T>(path: string, body?: any) =>
   api<T>(path, {
-    method: "POST",
+    method: 'POST',
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
 export const apiPatch = <T>(path: string, body?: any) =>
   api<T>(path, {
-    method: "PATCH",
+    method: 'PATCH',
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
-export const apiDelete = <T>(path: string) => api<T>(path, { method: "DELETE" });
+export const apiDelete = <T>(path: string) => api<T>(path, { method: 'DELETE' });

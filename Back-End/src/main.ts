@@ -1,14 +1,19 @@
-import "reflect-metadata";
-import { ValidationPipe } from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
-import { join } from "path";
-import { NestExpressApplication } from "@nestjs/platform-express";
+import 'reflect-metadata';
+import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { join } from 'path';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 function parseCorsOrigins(value?: string): string[] {
-  if (!value) return ["http://localhost:5173", "http://localhost:3000"];
+  if (!value)
+    return [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://gleaming-serenity-production.up.railway.app',
+    ];
   return value
-    .split(",")
+    .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
 }
@@ -21,7 +26,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.setGlobalPrefix("api");
+  app.setGlobalPrefix('api');
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -31,8 +36,8 @@ async function bootstrap() {
     })
   );
 
-  app.useStaticAssets(join(process.cwd(), "uploads"), {
-    prefix: "/uploads",
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads',
   });
 
   await app.listen(Number(process.env.PORT || 3000));
