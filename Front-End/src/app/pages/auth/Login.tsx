@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from '@/app/components/ui/card';
 import { toast } from 'sonner';
-import { Turnstile } from '@marsidev/react-turnstile';
 import { Github, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
 
 import { useAuth } from '@/shared/contexts/AuthContext';
@@ -91,12 +90,9 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'google' | 'github' | null>(null);
 
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [formError, setFormError] = useState('');
   const [emailTouched, setEmailTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
-
-  const siteKey = useMemo(() => import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined, []);
 
   const backendUrl = useMemo(() => {
     const raw =
@@ -149,10 +145,6 @@ export function Login() {
       return 'Password must contain at least 6 characters.';
     }
 
-    if (!captchaToken) {
-      return 'Please verify that you are human.';
-    }
-
     return '';
   };
 
@@ -181,7 +173,7 @@ export function Login() {
         localStorage.removeItem('remembered_email');
       }
 
-      const result = (await login(cleanEmail, password, captchaToken as string)) as LoginResult;
+      const result = (await login(cleanEmail, password)) as LoginResult;
 
       const user = result?.user;
       const mustChangePassword = !!result?.mustChangePassword;
@@ -234,8 +226,6 @@ export function Login() {
         });
         setFormError(msg);
       }
-
-      setCaptchaToken(null);
     } finally {
       setLoading(false);
     }
@@ -401,27 +391,9 @@ export function Login() {
               />
               Remember me
             </label>
-
-            <span className="text-xs text-slate-400">Protected by Turnstile</span>
           </div>
 
-          {siteKey ? (
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
-              <Turnstile
-                siteKey={siteKey}
-                onSuccess={(token) => setCaptchaToken(token)}
-                onError={() => setCaptchaToken(null)}
-                onExpire={() => setCaptchaToken(null)}
-                options={{ theme: 'light' }}
-              />
-            </div>
-          ) : (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-700">
-              CAPTCHA is not configured. Add{' '}
-              <span className="font-semibold">VITE_TURNSTILE_SITE_KEY</span> in your environment
-              variables.
-            </div>
-          )}
+
 
           {formError && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
@@ -432,7 +404,7 @@ export function Login() {
           <Button
             type="submit"
             className="h-12 w-full rounded-xl bg-slate-950 text-white shadow-lg transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
-            disabled={isSubmitting || !siteKey}
+            disabled={isSubmitting}
           >
             {loading ? (
               <>

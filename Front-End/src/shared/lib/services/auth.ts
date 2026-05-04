@@ -20,14 +20,13 @@ export type AuthResponse = {
 };
 
 export const AuthApi = {
-  // ✅ Login avec captcha optionnel
-  login: (email: string, password: string, captchaToken?: string) =>
+  // ✅ Login
+  login: (email: string, password: string) =>
     api<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({
         email,
         password,
-        captchaToken, // 🔥 important pour backend verify (si تعمل verify)
       }),
     }),
 

@@ -1,13 +1,6 @@
 // src/shared/contexts/AuthContext.tsx
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  ReactNode,
-} from "react";
-import { AuthApi } from "@/shared/lib/services/auth";
+import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
+import { AuthApi } from '@/shared/lib/services/auth';
 
 export type User = {
   id: string;
@@ -32,7 +25,7 @@ type AuthState = {
   user: User | null;
   isReady: boolean;
 
-  login: (email: string, password: string, captchaToken?: string) => Promise<LoginResult>;
+  login: (email: string, password: string) => Promise<LoginResult>;
 
   register: (payload: {
     name: string;
@@ -56,12 +49,15 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
-const USER_KEY = "auth_user";
-const TOKEN_KEY = "access_token";
+const USER_KEY = 'auth_user';
+const TOKEN_KEY = 'access_token';
 
 function normalizePermissions(input: any): string[] {
   if (!Array.isArray(input)) return [];
-  return input.filter((x) => typeof x === "string").map((x) => x.trim()).filter(Boolean);
+  return input
+    .filter((x) => typeof x === 'string')
+    .map((x) => x.trim())
+    .filter(Boolean);
 }
 
 function safeParseUser(raw: string | null): User | null {
@@ -82,13 +78,15 @@ function safeParseUser(raw: string | null): User | null {
 function permVariants(p: string): string[] {
   const a = p.trim();
   if (!a) return [];
-  const dot = a.replace(/:/g, ".");
-  const colon = a.replace(/\./g, ":");
+  const dot = a.replace(/:/g, '.');
+  const colon = a.replace(/\./g, ':');
   return Array.from(new Set([a, dot, colon]));
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => safeParseUser(localStorage.getItem(USER_KEY)));
+  const [user, setUser] = useState<User | null>(() =>
+    safeParseUser(localStorage.getItem(USER_KEY))
+  );
   const [isReady, setReady] = useState(false);
 
   const persistUser = (u: User | null) => {
@@ -121,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
-        localStorage.removeItem("current_business_id");
+        localStorage.removeItem('current_business_id');
         persistUser(null);
       })
       .finally(() => setReady(true));
@@ -131,15 +129,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthState>(() => {
     const perms = normalizePermissions(user?.permissions);
 
-    const isSuper =
-      user?.role === "platform_admin" || user?.role === "business_owner";
+    const isSuper = user?.role === 'platform_admin' || user?.role === 'business_owner';
 
     const hasPermission = (perm: string) => {
       if (!user) return false;
       if (isSuper) return true;
 
       // wildcard
-      if (perms.includes("*")) return true;
+      if (perms.includes('*')) return true;
 
       // support ":" and "."
       const variants = permVariants(perm);
@@ -149,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const hasAnyPermission = (list: string[]) => {
       if (!user) return false;
       if (isSuper) return true;
-      if (perms.includes("*")) return true;
+      if (perms.includes('*')) return true;
 
       return list.some((p) => hasPermission(p));
     };
@@ -157,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const hasAllPermissions = (list: string[]) => {
       if (!user) return false;
       if (isSuper) return true;
-      if (perms.includes("*")) return true;
+      if (perms.includes('*')) return true;
 
       return list.every((p) => hasPermission(p));
     };
@@ -170,11 +167,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasAnyPermission,
       hasAllPermissions,
 
-      login: async (email, password, captchaToken) => {
-        const res: any = await AuthApi.login(email, password, captchaToken);
+      login: async (email, password) => {
+        const res: any = await AuthApi.login(email, password);
 
         localStorage.setItem(TOKEN_KEY, res.access_token);
-        localStorage.removeItem("current_business_id");
+        localStorage.removeItem('current_business_id');
 
         const mustChangePassword = !!res.mustChangePassword;
 
@@ -186,32 +183,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
 
           persistUser(loginUser);
-          window.dispatchEvent(new Event("auth-changed"));
+          window.dispatchEvent(new Event('auth-changed'));
           return { user: loginUser, mustChangePassword: true };
         }
 
         const me = await syncMe();
-        window.dispatchEvent(new Event("auth-changed"));
+        window.dispatchEvent(new Event('auth-changed'));
         return { user: me, mustChangePassword: false };
       },
 
       register: async (payload) => {
-  const res: any = await AuthApi.register(payload as any); // ← add as any
-  localStorage.setItem(TOKEN_KEY, res.access_token);
-  localStorage.removeItem("current_business_id");
+        const res: any = await AuthApi.register(payload as any); // ← add as any
+        localStorage.setItem(TOKEN_KEY, res.access_token);
+        localStorage.removeItem('current_business_id');
 
-  const me = await syncMe();
-  window.dispatchEvent(new Event("auth-changed"));
-  return me;
-},
+        const me = await syncMe();
+        window.dispatchEvent(new Event('auth-changed'));
+        return me;
+      },
 
       acceptInvite: async (payload) => {
         const res: any = await AuthApi.acceptInvite(payload as any);
         localStorage.setItem(TOKEN_KEY, res.access_token);
-        localStorage.removeItem("current_business_id");
+        localStorage.removeItem('current_business_id');
 
         const me = await syncMe();
-        window.dispatchEvent(new Event("auth-changed"));
+        window.dispatchEvent(new Event('auth-changed'));
         return me;
       },
 
@@ -226,18 +223,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const updatedUser: User = { ...me, mustChangePassword: false };
 
         persistUser(updatedUser);
-        localStorage.removeItem("current_business_id");
+        localStorage.removeItem('current_business_id');
 
-        window.dispatchEvent(new Event("auth-changed"));
+        window.dispatchEvent(new Event('auth-changed'));
         return updatedUser;
       },
 
       logout: () => {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
-        localStorage.removeItem("current_business_id");
+        localStorage.removeItem('current_business_id');
         persistUser(null);
-        window.dispatchEvent(new Event("auth-changed"));
+        window.dispatchEvent(new Event('auth-changed'));
       },
     };
   }, [user, isReady]);
@@ -247,6 +244,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
