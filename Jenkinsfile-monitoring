@@ -13,9 +13,9 @@ pipeline {
             steps {
                 script {
                     echo 'Deploying Prometheus and Grafana to Kubernetes...'
-                    // CHANGED: Use 'sh' for WSL Linux and removed 'K8s/' prefix
-                    sh 'kubectl apply -f Prometheus-deployment.yml'
-                    sh 'kubectl apply -f Grafana-deployment.yml'
+                    // Restore K8s/ prefix and use sh for WSL Linux 
+                    sh 'kubectl apply -f K8s/Prometheus-deployment.yml'
+                    sh 'kubectl apply -f K8s/Grafana-deployment.yml'
                 }
             }
         }
@@ -24,7 +24,7 @@ pipeline {
             steps {
                 script {
                     echo 'Checking pod and service status...'
-                    // CHANGED: Use 'sh' for WSL Linux
+                    // Use sh for WSL Linux 
                     sh 'kubectl get pods -l app=prometheus'
                     sh 'kubectl get pods -l app=grafana'
                     sh 'kubectl get svc prometheus-service'
