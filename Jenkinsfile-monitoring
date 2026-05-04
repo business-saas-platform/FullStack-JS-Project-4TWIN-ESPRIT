@@ -13,11 +13,9 @@ pipeline {
             steps {
                 script {
                     echo 'Deploying Prometheus and Grafana to Kubernetes...'
-                    // Apply Prometheus manifests
-                    bat 'kubectl apply -f K8s/Prometheus-deployment.yml'
-                    
-                    // Apply Grafana manifests
-                    bat 'kubectl apply -f K8s/Grafana-deployment.yml'
+                    // CHANGED: Use 'sh' for WSL Linux and removed 'K8s/' prefix
+                    sh 'kubectl apply -f Prometheus-deployment.yml'
+                    sh 'kubectl apply -f Grafana-deployment.yml'
                 }
             }
         }
@@ -26,10 +24,11 @@ pipeline {
             steps {
                 script {
                     echo 'Checking pod and service status...'
-                    bat 'kubectl get pods -l app=prometheus'
-                    bat 'kubectl get pods -l app=grafana'
-                    bat 'kubectl get svc prometheus-service'
-                    bat 'kubectl get svc grafana-service'
+                    // CHANGED: Use 'sh' for WSL Linux
+                    sh 'kubectl get pods -l app=prometheus'
+                    sh 'kubectl get pods -l app=grafana'
+                    sh 'kubectl get svc prometheus-service'
+                    sh 'kubectl get svc grafana-service'
                 }
             }
         }
