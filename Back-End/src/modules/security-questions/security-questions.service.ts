@@ -33,7 +33,7 @@ export class SecurityQuestionsService {
   // ──────────────────────────────────────────────
   async setupQuestions(userId: string, dto: SetupSecurityQuestionsDto) {
     // Find and remove any existing questions for this user
-    const existing = await this.sqRepo.find({ where: { user: { id: userId } } });
+    const existing = await this.sqRepo.find({ where: { userId } });
     if (existing.length > 0) {
       await this.sqRepo.remove(existing);
     }
