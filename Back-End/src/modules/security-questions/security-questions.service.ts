@@ -32,17 +32,20 @@ export class SecurityQuestionsService {
   // SETUP: called after first-login password change
   // ──────────────────────────────────────────────
   async setupQuestions(userId: string, dto: SetupSecurityQuestionsDto) {
-    // Find and remove any existing questions for this user
-    const existing = await this.sqRepo.find({ where: { userId } });
-    if (existing.length > 0) {
-      await this.sqRepo.remove(existing);
+    // Remove any existing questions for this user
+    await this.sqRepo.delete({ userId });
+
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
 
     const entities = await Promise.all(
       dto.questions.map(async (item, index) => {
         const answerHash = await bcrypt.hash(item.answer.trim().toLowerCase(), SALT_ROUNDS);
         return this.sqRepo.create({
-          userId,
+          user, // Use the user entity object
+          userId: user.id, // Also set the userId directly
           questionIndex: index,
           question: item.question,
           answerHash,
