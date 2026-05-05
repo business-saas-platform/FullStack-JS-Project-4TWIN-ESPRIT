@@ -34,7 +34,8 @@ spec:
             - name: PORT
               value: "3000"
             - name: CORS_ORIGINS
-              value: "http://localhost:8083"
+              # Frontend NodePort
+              value: "http://192.168.49.2:30080" 
 
             # JWT
             - name: JWT_SECRET
@@ -82,7 +83,7 @@ spec:
 
             # Frontend
             - name: FRONTEND_URL
-              value: "http://localhost:8083"
+              value: "http://192.168.49.2:30080"
 
 --- 
 apiVersion: v1
