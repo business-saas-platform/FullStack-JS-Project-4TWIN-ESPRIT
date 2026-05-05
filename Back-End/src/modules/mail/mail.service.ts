@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 
 // =====================================================
@@ -48,6 +48,7 @@ type EmployeeCreatedEmailParams = {
 @Injectable()
 export class MailService {
   private transporter: nodemailer.Transporter;
+  private readonly logger = new Logger(MailService.name);
 
   constructor() {
     const mailConfig = {
@@ -89,7 +90,7 @@ export class MailService {
     const permsHtml =
       permissions && permissions.length
         ? `<ul style="margin:10px 0 0;padding-left:18px;color:#374151;font-size:14px;line-height:1.7;">
-             ${permissions.map((p) => `<li>${this.escapeHtml(p)}</li>`).join('')}
+             ${permissions.map((p) => `<li>${this.escapeHtml(p)}</li>`).join(' ')}
            </ul>`
         : `<p style="margin:8px 0 0;font-size:14px;color:#6b7280;"><i>Aucune permission spécifique</i></p>`;
 
