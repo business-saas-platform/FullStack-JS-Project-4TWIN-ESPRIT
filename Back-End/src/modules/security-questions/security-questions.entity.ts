@@ -4,12 +4,19 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { UserEntity } from '../users/entities/user.entity';
 
 @Entity('security_questions')
 export class SecurityQuestion {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'userId' })
+  user!: UserEntity;
 
   @Column()
   userId!: string;
