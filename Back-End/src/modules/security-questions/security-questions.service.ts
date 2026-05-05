@@ -35,7 +35,7 @@ export class SecurityQuestionsService {
     // Remove any existing questions for this user
     await this.sqRepo.delete({ userId });
 
-    const user = await this.usersService.findById(userId);
+    const user = await this.usersService.findOne(userId);
     if (!user) {
       throw new NotFoundException('User not found');
     }
