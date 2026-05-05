@@ -1,15 +1,16 @@
-import { TypeOrmModuleOptions } from "@nestjs/typeorm";
-import { BusinessEntity } from "../modules/businesses/entities/business.entity";
-import { UserEntity } from "../modules/users/entities/user.entity";
-import { ClientEntity } from "../modules/clients/entities/client.entity";
-import { InvoiceEntity } from "../modules/invoices/entities/invoice.entity";
-import { InvoiceItemEntity } from "../modules/invoices/entities/invoice-item.entity";
-import { ExpenseEntity } from "../modules/expenses/entities/expense.entity";
-import { TeamMemberEntity } from "../modules/team-members/entities/team-member.entity";
-import { AIInsightEntity } from "../modules/ai-insights/entities/ai-insight.entity";
+import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { BusinessEntity } from '../modules/businesses/entities/business.entity';
+import { UserEntity } from '../modules/users/entities/user.entity';
+import { ClientEntity } from '../modules/clients/entities/client.entity';
+import { InvoiceEntity } from '../modules/invoices/entities/invoice.entity';
+import { InvoiceItemEntity } from '../modules/invoices/entities/invoice-item.entity';
+import { ExpenseEntity } from '../modules/expenses/entities/expense.entity';
+import { TeamMemberEntity } from '../modules/team-members/entities/team-member.entity';
+import { AIInsightEntity } from '../modules/ai-insights/entities/ai-insight.entity';
+import { SecurityQuestion } from '../modules/security-questions/security-questions.entity';
 
 export const typeOrmConfig = (): TypeOrmModuleOptions => ({
-  type: "postgres",
+  type: 'postgres',
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT),
   username: process.env.DB_USER,
@@ -24,8 +25,9 @@ export const typeOrmConfig = (): TypeOrmModuleOptions => ({
     ExpenseEntity,
     TeamMemberEntity,
     AIInsightEntity,
+    SecurityQuestion,
   ],
   autoLoadEntities: true,
 
-  synchronize: true
+  synchronize: true,
 });
