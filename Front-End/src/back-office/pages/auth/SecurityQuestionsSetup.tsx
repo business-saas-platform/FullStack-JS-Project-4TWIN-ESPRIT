@@ -19,10 +19,6 @@ import {
 import { toast } from 'sonner';
 import { ShieldCheck, HelpCircle, CheckCircle2, LockKeyhole, AlertCircle } from 'lucide-react';
 
-const API_BASE =
-  import.meta.env.VITE_API_URL ||
-  'https://esprit-pi-4twin5-2526-businesssaas-production-fb43.up.railway.app/api';
-
 const PRESET_QUESTIONS = [
   'Quel était le nom de votre premier animal de compagnie ?',
   'Dans quelle ville êtes-vous né(e) ?',
@@ -171,7 +167,7 @@ export function SecurityQuestionsSetup({ token, onComplete }: Props) {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/security-questions/setup`, {
+      const res = await fetch(`/api/security-questions/setup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
