@@ -25,29 +25,29 @@ export class SecurityQuestionsService {
     @InjectRepository(SecurityQuestion)
     private readonly sqRepo: Repository<SecurityQuestion>,
     private readonly usersService: UsersService,
-    private readonly jwtService: JwtService,
+    private readonly jwtService: JwtService
   ) {}
 
   // ──────────────────────────────────────────────
   // SETUP: called after first-login password change
   // ──────────────────────────────────────────────
   async setupQuestions(userId: string, dto: SetupSecurityQuestionsDto) {
-    // Remove any existing questions for this user
-    await this.sqRepo.delete({ userId });
+    // Find and remove any existing questions for this user
+    const existing = await this.sqRepo.find({ where: { user: { id: userId } } });
+    if (existing.length > 0) {
+      await this.sqRepo.remove(existing);
+    }
 
     const entities = await Promise.all(
       dto.questions.map(async (item, index) => {
-        const answerHash = await bcrypt.hash(
-          item.answer.trim().toLowerCase(),
-          SALT_ROUNDS,
-        );
+        const answerHash = await bcrypt.hash(item.answer.trim().toLowerCase(), SALT_ROUNDS);
         return this.sqRepo.create({
           userId,
           questionIndex: index,
           question: item.question,
           answerHash,
         });
-      }),
+      })
     );
 
     await this.sqRepo.save(entities);
@@ -99,7 +99,7 @@ export class SecurityQuestionsService {
     // Issue a short-lived token (5 min) scoped to "answer questions"
     const resetToken = this.jwtService.sign(
       { sub: user.id, stage: 'verify_questions' },
-      { expiresIn: '5m' },
+      { expiresIn: '5m' }
     );
 
     return { questions, resetToken };
@@ -134,7 +134,7 @@ export class SecurityQuestionsService {
       records.map((record, i) => {
         const submitted = dto.answers[i]?.answer?.trim().toLowerCase() ?? '';
         return bcrypt.compare(submitted, record.answerHash);
-      }),
+      })
     );
 
     if (!results.every(Boolean)) {
@@ -144,7 +144,7 @@ export class SecurityQuestionsService {
     // Issue a "verified" token valid for 10 min to actually reset password
     const verifiedToken = this.jwtService.sign(
       { sub: payload.sub, stage: 'reset_password' },
-      { expiresIn: '10m' },
+      { expiresIn: '10m' }
     );
 
     return { verifiedToken, message: 'Answers verified. You may now reset your password.' };
