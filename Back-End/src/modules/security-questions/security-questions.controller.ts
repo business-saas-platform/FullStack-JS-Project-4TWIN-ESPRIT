@@ -8,8 +8,9 @@ import {
 } from './security-questions.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // your existing guard
 import { Request as ExpressRequest } from 'express';
+import { BusinessId } from '../../common/decorators/business-id.decorator';
 
-@Controller('security-questions')  // ← add this
+@Controller('security-questions') // ← add this
 export class SecurityQuestionsController {
   constructor(private readonly sqService: SecurityQuestionsService) {}
 
@@ -17,22 +18,26 @@ export class SecurityQuestionsController {
    * Authenticated: setup/update security questions
    * POST /security-questions/setup
    */
-@UseGuards(JwtAuthGuard)
-@Post('setup')
-async setup(@Request() req: ExpressRequest & { user: { sub: string } }, @Body() dto: SetupSecurityQuestionsDto) {
-  return this.sqService.setupQuestions(req.user.sub, dto);
-}
+  @UseGuards(JwtAuthGuard)
+  @Post('setup')
+  async setup(
+    @Request() req: ExpressRequest & { user: { sub: string } },
+    @Body() dto: SetupSecurityQuestionsDto,
+    @BusinessId() businessId: string
+  ) {
+    return this.sqService.setupQuestions(req.user.sub, businessId, dto);
+  }
 
   /**
    * Authenticated: check if user has set security questions
    * GET /security-questions/status
    */
- @UseGuards(JwtAuthGuard)
-@Get('status')
-async status(@Request() req: ExpressRequest & { user: { sub: string } }) {
-  const hasQuestions = await this.sqService.hasQuestions(req.user.sub);
-  return { hasQuestions };
-}
+  @UseGuards(JwtAuthGuard)
+  @Get('status')
+  async status(@Request() req: ExpressRequest & { user: { sub: string } }) {
+    const hasQuestions = await this.sqService.hasQuestions(req.user.sub);
+    return { hasQuestions };
+  }
 
   /**
    * Public: step 1 — provide email, receive questions + token

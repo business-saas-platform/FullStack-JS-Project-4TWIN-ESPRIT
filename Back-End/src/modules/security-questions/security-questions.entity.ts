@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { UserEntity } from '../users/entities/user.entity';
 
@@ -20,6 +21,10 @@ export class SecurityQuestion {
 
   @Column()
   userId!: string;
+
+  @Index()
+  @Column({ type: 'uuid' })
+  businessId!: string;
 
   @Column()
   questionIndex!: number;

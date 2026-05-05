@@ -33,7 +33,7 @@ export class SecurityQuestionsService {
   // ──────────────────────────────────────────────
   // SETUP: called after first-login password change
   // ──────────────────────────────────────────────
-  async setupQuestions(userId: string, dto: SetupSecurityQuestionsDto) {
+  async setupQuestions(userId: string, businessId: string, dto: SetupSecurityQuestionsDto) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -41,8 +41,8 @@ export class SecurityQuestionsService {
     try {
       const sqRepo = queryRunner.manager.getRepository(SecurityQuestion);
 
-      // 1. Delete existing questions
-      await sqRepo.delete({ userId });
+      // 1. Delete existing questions for this user and business
+      await sqRepo.delete({ userId, businessId });
 
       // 2. Find user
       const user = await this.usersService.findOne(userId);
@@ -57,6 +57,7 @@ export class SecurityQuestionsService {
         const newQuestion = sqRepo.create({
           user,
           userId: user.id,
+          businessId, // Add businessId here
           questionIndex: i,
           question: item.question,
           answerHash,
