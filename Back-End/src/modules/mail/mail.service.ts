@@ -50,15 +50,19 @@ export class MailService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST || 'smtp.gmail.com',
-      port: Number(process.env.MAIL_PORT || 587),
-      secure: false, // true فقط مع port 465
+    const mailConfig = {
+      host: process.env.MAIL_HOST,
+      port: Number(process.env.MAIL_PORT),
+      secure: false, // For port 587, secure should be false.
       auth: {
         user: process.env.MAIL_USER,
         pass: process.env.MAIL_PASS,
       },
-    });
+    };
+    this.logger.log('Mail Config:', mailConfig);
+    this.transporter = nodemailer.createTransport(mailConfig);
+
+    this.verifyConnection();
   }
 
   // =====================================================
