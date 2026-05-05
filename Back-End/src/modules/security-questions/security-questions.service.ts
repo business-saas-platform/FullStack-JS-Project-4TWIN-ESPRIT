@@ -3,9 +3,10 @@ import {
   BadRequestException,
   NotFoundException,
   UnauthorizedException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { SecurityQuestion } from './security-questions.entity';
@@ -22,6 +23,7 @@ const SALT_ROUNDS = 12;
 @Injectable()
 export class SecurityQuestionsService {
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(SecurityQuestion)
     private readonly sqRepo: Repository<SecurityQuestion>,
     private readonly usersService: UsersService,
@@ -32,29 +34,48 @@ export class SecurityQuestionsService {
   // SETUP: called after first-login password change
   // ──────────────────────────────────────────────
   async setupQuestions(userId: string, dto: SetupSecurityQuestionsDto) {
-    // Remove any existing questions for this user
-    await this.sqRepo.delete({ userId });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const user = await this.usersService.findOne(userId);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    try {
+      const sqRepo = queryRunner.manager.getRepository(SecurityQuestion);
 
-    const entities = await Promise.all(
-      dto.questions.map(async (item, index) => {
+      // 1. Delete existing questions
+      await sqRepo.delete({ userId });
+
+      // 2. Find user
+      const user = await this.usersService.findOne(userId);
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // 3. Create and save new questions
+      for (let i = 0; i < dto.questions.length; i++) {
+        const item = dto.questions[i];
         const answerHash = await bcrypt.hash(item.answer.trim().toLowerCase(), SALT_ROUNDS);
-        return this.sqRepo.create({
-          user, // Use the user entity object
-          userId: user.id, // Also set the userId directly
-          questionIndex: index,
+        const newQuestion = sqRepo.create({
+          user,
+          userId: user.id,
+          questionIndex: i,
           question: item.question,
           answerHash,
         });
-      })
-    );
+        await sqRepo.save(newQuestion);
+      }
 
-    await this.sqRepo.save(entities);
-    return { message: 'Security questions saved successfully.' };
+      await queryRunner.commitTransaction();
+      return { message: 'Security questions saved successfully.' };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      // Log the error for debugging
+      console.error('Transaction failed:', error);
+      throw new InternalServerErrorException(
+        'Failed to save security questions due to a server error.'
+      );
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   // Check if user has set up security questions
